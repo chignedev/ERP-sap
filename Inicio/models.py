@@ -28,3 +28,50 @@ class Usuario(AbstractUser):
     class Meta:
         verbose_name = "Usuario"
         verbose_name_plural = "Usuarios"
+
+from django.db import models
+from django.core.validators import MinValueValidator
+
+class Centro(models.Model):
+    codigo = models.CharField(max_length=10, unique=True)
+    nombre = models.CharField(max_length=100)
+
+    def __str__(self):
+        return f"{self.codigo} - {self.nombre}"
+
+
+class Material(models.Model):
+    TIPO_CHOICES = [
+        ('FERT', 'FERT - Producto terminado'),
+        ('ROH', 'ROH - Materia prima'),
+        ('HALB', 'HALB - Producto semi-terminado'),
+        ('SERV', 'SERV - Servicio'),
+    ]
+
+    codigo = models.CharField(max_length=20, unique=True)
+    nombre = models.CharField(max_length=100)
+    tipo = models.CharField(max_length=10, choices=TIPO_CHOICES)
+    unidad_medida = models.CharField(max_length=10, default='UN')
+    descripcion = models.TextField(blank=True, null=True)
+    
+    centro = models.ForeignKey(Centro, on_delete=models.CASCADE, related_name='materiales')
+    precio = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.codigo} - {self.nombre}"
+
+
+class ComponenteMaterial(models.Model):
+    material_padre = models.ForeignKey(Material, on_delete=models.CASCADE, related_name='componentes')
+    componente = models.ForeignKey(Material, on_delete=models.CASCADE, related_name='usado_en')
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
+
+    def __str__(self):
+        return f"{self.material_padre.codigo} ← {self.componente.codigo} x {self.cantidad}"
+
+    class Meta:
+        verbose_name = "Componente de Material"
+        verbose_name_plural = "Componentes de Material"

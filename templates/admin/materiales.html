@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Materiales</h2>
+
+    <button class="btn btn-primary mb-3" onclick="formMaterial()">+ Nuevo Material</button>
+
+    <table class="table table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Tipo</th>
+                <th>Unidad</th>
+                <th>Precio</th>
+                <th>Centro</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-materiales">
+            {% for m in materiales %}
+            <tr>
+                <td>{{ m.codigo }}</td>
+                <td>{{ m.nombre }}</td>
+                <td>{{ m.get_tipo_display }}</td>
+                <td>{{ m.unidad_medida }}</td>
+                <td>S/ {{ m.precio }}</td>
+                <td>{{ m.centro.nombre }}</td>
+                <td>
+                    <div class="d-flex flex-wrap gap-1">
+                        <button class="btn btn-sm btn-warning"
+                            onclick="formMaterial({{ m.id }}, '{{ m.codigo }}', '{{ m.nombre }}', '{{ m.tipo }}', '{{ m.unidad_medida }}', '{{ m.precio }}', '{{ m.centro.id }}')">
+                            ✏️ Editar
+                        </button>
+                        {% if m.tipo == 'FERT' %}
+                        <button class="btn btn-sm btn-info" onclick="verComponentes({{ m.id }}, '{{ m.nombre }}')">⚙ Componentes</button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-danger" onclick="eliminarMaterial({{ m.id }})">🗑 Eliminar</button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+const urlGuardar = "{% url 'Admin:guardar_material' %}";
+const urlEliminar = "{% url 'Admin:eliminar_material' %}";
+
+function formMaterial(id = null, codigo = '', nombre = '', tipo = '', unidad_medida = '', precio = '', centro_id = '') {
+    const tipos = {
+        FERT: 'Producto terminado',
+        ROH: 'Materia prima',
+        HALB: 'Producto semi-terminado',
+        SERV: 'Servicio'
+    };
+
+    let tipoOptions = '';
+    for (const key in tipos) {
+        tipoOptions += `<option value="${key}" ${key === tipo ? 'selected' : ''}>${tipos[key]}</option>`;
+    }
+
+    let centroOptions = '';
+    {% for centro in centros %}
+    centroOptions += `<option value="{{ centro.id }}">{{ centro.nombre }}</option>`;
+    {% endfor %}
+
+    Swal.fire({
+        title: id ? '✏️ Editar Material' : '🧾 Nuevo Material',
+        width: '800px',
+        html: `
+            <div class="row">
+                ${id ? `
+                <div class="col-md-12">
+                    <label class="form-label">Código:</label>
+                    <input class="form-control mb-2" value="${codigo}" disabled>
+                </div>` : '' }
+                <div class="col-md-6">
+                    <input id="nombre" class="form-control mb-2" placeholder="Nombre" value="${nombre}">
+                </div>
+                <div class="col-md-6">
+                    <select id="tipo" class="form-select mb-2">${tipoOptions}</select>
+                </div>
+                <div class="col-md-6">
+                    <input id="unidad" class="form-control mb-2" placeholder="Unidad de medida" value="${unidad_medida}">
+                </div>
+                <div class="col-md-6">
+                    <input id="precio" class="form-control mb-2" type="number" placeholder="Precio" value="${precio}">
+                </div>
+                <div class="col-md-12">
+                    <select id="centro" class="form-select mb-2">${centroOptions}</select>
+                </div>
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: '💾 Guardar',
+        cancelButtonText: '❌ Cancelar',
+        background: '#f4f4f4',
+        customClass: {
+            popup: 'rounded-4 shadow p-4',
+            confirmButton: 'btn btn-success px-4',
+            cancelButton: 'btn btn-outline-secondary me-2'
+        },
+        didOpen: () => {
+            document.getElementById('centro').value = centro_id;
+        },
+        preConfirm: () => {
+            const data = {
+                id,
+                nombre: document.getElementById('nombre').value.trim(),
+                tipo: document.getElementById('tipo').value,
+                unidad_medida: document.getElementById('unidad').value.trim(),
+                precio: document.getElementById('precio').value,
+                centro: document.getElementById('centro').value,
+            };
+
+            if (!data.nombre || !data.unidad_medida || !data.precio || !data.centro) {
+                Swal.showValidationMessage("Todos los campos son obligatorios.");
+                return false;
+            }
+
+            return fetch(urlGuardar, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify(data),
+            })
+            .then(res => res.json())
+            .then(resp => {
+                if (resp.ok) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Guardado correctamente',
+                        timer: 1200,
+                        showConfirmButton: false,
+                        background: '#eafaf1',
+                    }).then(() => location.reload());
+                } else {
+                    Swal.showValidationMessage(resp.error);
+                }
+            });
+        }
+    });
+}
+
+function eliminarMaterial(id) {
+    Swal.fire({
+        title: '¿Estás seguro?',
+        text: "Esta acción no se puede deshacer.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        background: '#fff8f0',
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        customClass: {
+            popup: 'rounded-4',
+            confirmButton: 'btn btn-danger',
+            cancelButton: 'btn btn-outline-dark me-2'
+        }
+    }).then(result => {
+        if (result.isConfirmed) {
+            fetch(urlEliminar, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ id }),
+            })
+            .then(res => res.json())
+            .then(resp => {
+                if (resp.ok) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Eliminado correctamente',
+                        timer: 1200,
+                        showConfirmButton: false,
+                        background: '#fef9f9',
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: resp.error,
+                        background: '#fff0f0',
+                    });
+                }
+            });
+        }
+    });
+}
+
+// (Próxima funcionalidad)
+</script>
+
+<script>
+    function verComponentes(materialId, nombre) {
+    fetch(`/admin/materiales/componentes/${materialId}/`)
+    .then(res => res.json())
+    .then(data => {
+        if (!data.ok) return;
+
+        let filas = '';
+        data.componentes.forEach((c, i) => {
+            filas += `
+                <tr>
+                    <td>${c.componente_nombre}</td>
+                    <td>${c.unidad}</td>
+                    <td><input type="number" class="form-control form-control-sm" value="${c.cantidad}" id="cantidad_${c.id}"></td>
+                    <td>
+                        <button class="btn btn-sm btn-success" onclick="guardarComponente(${materialId}, ${c.id}, document.getElementById('cantidad_${c.id}').value, ${c.componente_id})">💾</button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarComponente(${c.id})">🗑</button>
+                    </td>
+                </tr>`;
+        });
+
+        let opciones = '';
+        data.materiales.forEach(m => {
+            opciones += `<option value="${m.id}">${m.nombre} (${m.unidad})</option>`;
+        });
+
+        Swal.fire({
+            title: `⚙ Componentes de ${nombre}`,
+            width: '900px',
+            html: `
+                <div class="table-responsive">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Unidad</th>
+                                <th>Cantidad</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>${filas}</tbody>
+                    </table>
+                    <div class="mt-3 d-flex align-items-center gap-2" style="flex-wrap: wrap;">
+                        <select id="nuevo_componente" class="form-select form-select-sm" style="width: 250px; height: 35px;">
+                            ${opciones}
+                        </select>
+                        <input type="number" id="nueva_cantidad" class="form-control form-control-sm" placeholder="Cantidad" style="width: 120px; height: 35px;">
+                        <button class="btn btn-sm btn-primary" style="height: 35px;" onclick="guardarComponente(${materialId}, null, document.getElementById('nueva_cantidad').value, document.getElementById('nuevo_componente').value)">+ Añadir</button>
+                    </div>
+                </div>`,
+            showCancelButton: true,
+            confirmButtonText: 'Cerrar',
+            cancelButtonText: 'Cancelar'
+        });
+    });
+}
+
+function guardarComponente(materialId, id, cantidad, componenteId = null) {
+    const payload = {
+        id,
+        material_padre: materialId,
+        componente: componenteId ?? document.getElementById('nuevo_componente').value,
+        cantidad: cantidad
+    };
+
+    fetch("{% url 'Admin:guardar_componente' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(() => verComponentes(materialId, ''));
+}
+
+function eliminarComponente(id) {
+    fetch("{% url 'Admin:eliminar_componente' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ id })
+    })
+    .then(res => res.json())
+    .then(() => Swal.close());
+}
+
+</script>
+{% endblock %}

@@ -7,7 +7,9 @@ def menu_context(request):
         return {}
 
     menu = [
-        {"name": "Dashboard", "icon": "fa-chart-line", "url": reverse('Admin:inicio')},
+        {"name": "Dashboard", "icon": "fa-tachometer-alt", "url": reverse('Admin:inicio')},
+        {"name": "Centros", "icon": "fa-building", "url": reverse('Admin:centros')},
+        {"name": "Materiales", "icon": "fa-boxes", "url": reverse('Admin:materiales')},
     
     ]
     return {"menu_links": menu}

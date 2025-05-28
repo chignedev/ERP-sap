@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Centros</h2>
+    
+    <button class="btn btn-primary mb-3" onclick="formCentro()">+ Nuevo Centro</button>
+
+    <table class="table table-bordered">
+        <thead class="table-dark">
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-centros">
+            {% for centro in centros %}
+            <tr data-id="{{ centro.id }}">
+                <td>{{ centro.codigo }}</td>
+                <td>{{ centro.nombre }}</td>
+                <td>
+                    <button class="btn btn-sm btn-warning" onclick="formCentro({{ centro.id }}, '{{ centro.codigo }}', '{{ centro.nombre }}')">Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarCentro({{ centro.id }})">Eliminar</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+function formCentro(id = null, codigo = '', nombre = '') {
+    Swal.fire({
+        title: id ? 'Editar Centro' : 'Nuevo Centro',
+        html:
+            `<input id="codigo" class="swal2-input" placeholder="Código" value="${codigo}">
+             <input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">`,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        preConfirm: () => {
+            const codigo = document.getElementById('codigo').value;
+            const nombre = document.getElementById('nombre').value;
+
+            return fetch(`/admin/centros/guardar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ id, codigo, nombre }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) location.reload();
+                else Swal.showValidationMessage(data.error);
+            });
+        }
+    });
+}
+
+function eliminarCentro(id) {
+    Swal.fire({
+        title: '¿Eliminar centro?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/admin/centros/eliminar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ id }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) location.reload();
+                else Swal.fire('Error', data.error, 'error');
+            });
+        }
+    });
+}
+</script>
+{% endblock %}
