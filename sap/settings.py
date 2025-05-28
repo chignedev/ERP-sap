@@ -171,3 +171,5 @@ LOGGING = {
         'level': 'DEBUG',
     },
 }
+CSRF_TRUSTED_ORIGINS = ['https://erp-sap-production.up.railway.app']
+
