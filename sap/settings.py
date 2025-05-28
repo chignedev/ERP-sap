@@ -17,6 +17,7 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1', 
     'erp-sap-production.up.railway.app',
+    '0.0.0.0',
 ]
 
 # Application definition
