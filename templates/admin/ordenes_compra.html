@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">Órdenes de Compra</h2>
+
+  <button class="btn btn-primary mb-4" onclick="formOrdenCompra()">+ Nueva Orden de Compra</button>
+
+  <div class="row">
+    {% for oc in ordenes %}
+    <div class="col-md-6 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5>OC #{{ oc.id }} — de SOLPED #{{ oc.solped.id }}</h5>
+          <p><strong>Solicitante:</strong> {{ oc.solicitante.get_full_name }}</p>
+          <p><strong>Total Estimado:</strong> S/. {{ oc.total_estimado }}</p>
+
+          <h6>📦 Items:</h6>
+          <table class="table table-sm table-striped">
+            <thead><tr><th>Material</th><th>Proveedor</th><th>Cantidad</th><th>Costo</th></tr></thead>
+            <tbody>
+              {% for item in oc.items.all %}
+              <tr>
+                <td>{{ item.descripcion }}</td>
+                <td>{{ item.proveedor.nombre }}</td>
+                <td>{{ item.cantidad }}</td>
+                <td>S/. {{ item.costo_estimado }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <button class="btn btn-danger btn-sm" onclick="eliminarOrdenCompra({{ oc.id }})">Eliminar</button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ✅ JSON seguro -->
+{{ solpeds|json_script:"solpeds-data" }}
+{{ proveedores|json_script:"proveedores-data" }}
+
+<script>
+const solpeds = JSON.parse(document.getElementById('solpeds-data').textContent);
+const proveedores = JSON.parse(document.getElementById('proveedores-data').textContent);
+
+function formOrdenCompra() {
+  let optionsSolped = `<option value="">-- Selecciona SOLPED --</option>`;
+  solpeds.forEach(s => {
+    optionsSolped += `<option value="${s.id}">SOLPED #${s.id}</option>`;
+  });
+
+  Swal.fire({
+    title: 'Nueva Orden de Compra',
+    html: `
+      <label>SOLPED:</label>
+      <select id="solped_id" class="form-control mb-2" onchange="loadItems()">${optionsSolped}</select>
+
+      <div id="itemsContainer"></div>
+    `,
+    width: '80%',
+    showCancelButton: true,
+    confirmButtonText: 'Guardar OC',
+    preConfirm: () => {
+      const solped_id = document.getElementById('solped_id').value;
+      const items = [];
+      document.querySelectorAll('.row-item').forEach(row => {
+        const itemId = row.dataset.itemId;
+        const provId = row.querySelector('.prov-select').value;
+        const entregas = []; // 🔑 Aquí puedes añadir entregas si quieres
+        items.push({
+          solped_item_id: itemId,
+          proveedor_id: provId,
+          entregas: entregas
+        });
+      });
+
+      if (!solped_id || items.length === 0) {
+        Swal.showValidationMessage('Selecciona la SOLPED y define proveedores.');
+        return false;
+      }
+
+      return fetch(`/admin/ordenes_compra/guardar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({
+          solped_id: solped_id,
+          solicitante_id: 1, // ⚠️ Sustituir con user real
+          items: items
+        })
+      }).then(r => r.json()).then(data => {
+        if (data.ok) location.reload();
+        else Swal.showValidationMessage(data.error);
+      });
+    }
+  });
+}
+
+function loadItems() {
+  const solpedId = document.getElementById('solped_id').value;
+  const container = document.getElementById('itemsContainer');
+  container.innerHTML = '';
+
+  if (!solpedId) return;
+
+  const solped = solpeds.find(s => s.id == solpedId);
+  let html = `<table class="table table-bordered"><thead><tr><th>Material</th><th>Cantidad</th><th>Proveedor</th></tr></thead><tbody>`;
+
+  solped.items.forEach(item => {
+    html += `<tr class="row-item" data-item-id="${item.id}">
+      <td>${item.material_nombre}</td>
+      <td>${item.cantidad}</td>
+      <td>
+        <select class="form-control prov-select">
+          ${proveedores.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('')}
+        </select>
+      </td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  container.innerHTML = html;
+}
+
+function eliminarOrdenCompra(id) {
+  Swal.fire({
+    title: '¿Eliminar OC?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar'
+  }).then(r => {
+    if (r.isConfirmed) {
+      fetch(`/admin/ordenes_compra/eliminar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ id: id })
+      }).then(res => res.json()).then(data => {
+        if (data.ok) location.reload();
+        else Swal.fire('Error', data.error, 'error');
+      });
+    }
+  });
+}
+</script>
+{% endblock %}

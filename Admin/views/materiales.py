@@ -1,70 +1,62 @@
 from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from Inicio.models import Material, Centro, ComponenteMaterial
-from django.db.models import Q
 import json
 
+from Inicio.models import ROH, FERT, BOM, Sede, Almacen
+
+# ================================
+# 📌 CRUD de Materiales ROH
+# ================================
 
 def materiales(request):
     context = {
-        'materiales': Material.objects.select_related('centro').all(),
-        'centros': Centro.objects.all(),
-        'materiales_disponibles': Material.objects.exclude(tipo='SERV')  # Para seleccionar componentes
+        'materiales': ROH.objects.select_related('centro', 'almacen').all(),
+        'sedes': Sede.objects.all()
     }
     return render(request, 'admin/materiales.html', context)
-
-
-def generar_codigo_material():
-    ultimo = Material.objects.order_by('-id').first()
-    numero = ultimo.id + 1 if ultimo else 1
-    return f"MAT{str(numero).zfill(4)}"
-
 
 @csrf_exempt
 def guardar_material(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         id = data.get('id')
+        codigo = data.get('codigo')
         nombre = data.get('nombre')
-        tipo = data.get('tipo')
-        unidad_medida = data.get('unidad_medida')
+        unidad_base = data.get('unidad_base', 'KG')
         precio = data.get('precio')
-        centro_id = data.get('centro')
+        centro_id = data.get('centro_id')
 
-        if not all([nombre, tipo, unidad_medida, precio, centro_id]):
-            return JsonResponse({'ok': False, 'error': 'Todos los campos son obligatorios'})
+        if not codigo or not nombre or not precio or not centro_id:
+            return JsonResponse({'ok': False, 'error': 'Todos los campos son obligatorios.'})
 
-        try:
-            centro = Centro.objects.get(id=centro_id)
-        except Centro.DoesNotExist:
-            return JsonResponse({'ok': False, 'error': 'Centro inválido'})
+        centro = get_object_or_404(Sede, id=centro_id)
+
+        # Buscar automáticamente el almacén de Materias Primas en esa sede
+        almacen_mp = centro.almacenes.filter(nombre__icontains="Materias Primas").first()
+        if not almacen_mp:
+            return JsonResponse({'ok': False, 'error': 'No se encontró un Almacén de Materias Primas para la sede seleccionada.'})
 
         if id:
-            try:
-                material = Material.objects.get(id=id)
-                material.nombre = nombre
-                material.tipo = tipo
-                material.unidad_medida = unidad_medida
-                material.precio = precio
-                material.centro = centro
-                material.save()
-            except Material.DoesNotExist:
-                return JsonResponse({'ok': False, 'error': 'Material no encontrado'})
+            material = get_object_or_404(ROH, id=id)
+            material.codigo = codigo
+            material.nombre = nombre
+            material.unidad_base = unidad_base
+            material.precio = precio
+            material.centro = centro
+            material.almacen = almacen_mp
+            material.save()
         else:
-            codigo = generar_codigo_material()
-            while Material.objects.filter(codigo=codigo).exists():
-                codigo = generar_codigo_material()
-
-            Material.objects.create(
+            if ROH.objects.filter(codigo=codigo).exists():
+                return JsonResponse({'ok': False, 'error': 'El código ya está registrado.'})
+            ROH.objects.create(
                 codigo=codigo,
                 nombre=nombre,
-                tipo=tipo,
-                unidad_medida=unidad_medida,
+                unidad_base=unidad_base,
                 precio=precio,
-                centro=centro
+                centro=centro,
+                almacen=almacen_mp
             )
-
         return JsonResponse({'ok': True})
 
 
@@ -74,126 +66,127 @@ def eliminar_material(request):
         data = json.loads(request.body)
         id = data.get('id')
         try:
-            Material.objects.get(id=id).delete()
+            material = get_object_or_404(ROH, id=id)
+            material.delete()
             return JsonResponse({'ok': True})
-        except Material.DoesNotExist:
-            return JsonResponse({'ok': False, 'error': 'Material no encontrado'})
+        except Exception as e:
+            return JsonResponse({'ok': False, 'error': str(e)})
 
+# ================================
+# 📌 CRUD de Materiales FERT
+# ================================
 
-# 🎯 Obtener los componentes de un material (tipo FERT o HALB)
-def listar_componentes(request, material_id):
-    componentes = ComponenteMaterial.objects.filter(material_padre_id=material_id).select_related('componente')
-    data = [{
-        'id': c.id,
-        'codigo': c.componente.codigo,
-        'nombre': c.componente.nombre,
-        'cantidad': float(c.cantidad)
-    } for c in componentes]
-    return JsonResponse({'ok': True, 'componentes': data})
+def fert(request):
+    context = {
+        'fert_list': FERT.objects.select_related('centro').all(),
+        'sedes': Sede.objects.all()
+    }
+    return render(request, 'admin/fert.html', context)
 
-
-# 🧩 Añadir o editar componente de material
 @csrf_exempt
-def guardar_componente(request):
+def guardar_fert(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        padre_id = data.get('padre_id')
-        componente_id = data.get('componente_id')
+        id = data.get('id')
+        codigo = data.get('codigo')
+        nombre = data.get('nombre')
+        unidad_base = data.get('unidad_base', 'KG')
+        precio = data.get('precio')
+        centro_id = data.get('centro_id')
+
+        if not codigo or not nombre or not precio or not centro_id:
+            return JsonResponse({'ok': False, 'error': 'Todos los campos son obligatorios.'})
+
+        centro = get_object_or_404(Sede, id=centro_id)
+
+        # 🔑 Buscar automáticamente el Almacén de Producto Terminado en esa sede
+        almacen_pt = centro.almacenes.filter(nombre__icontains="Producto Terminado").first()
+        if not almacen_pt:
+            return JsonResponse({'ok': False, 'error': 'No se encontró un Almacén de Producto Terminado para la sede seleccionada.'})
+
+        if id:
+            fert = get_object_or_404(FERT, id=id)
+            fert.codigo = codigo
+            fert.nombre = nombre
+            fert.unidad_base = unidad_base
+            fert.precio = precio
+            fert.centro = centro
+            fert.almacen = almacen_pt   # ✅ Guardar referencia
+            fert.save()
+        else:
+            if FERT.objects.filter(codigo=codigo).exists():
+                return JsonResponse({'ok': False, 'error': 'El código ya está registrado.'})
+            FERT.objects.create(
+                codigo=codigo,
+                nombre=nombre,
+                unidad_base=unidad_base,
+                precio=precio,
+                centro=centro,
+                almacen=almacen_pt   # ✅ Guardar referencia
+            )
+        return JsonResponse({'ok': True})
+
+
+@csrf_exempt
+def eliminar_fert(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        id = data.get('id')
+        try:
+            fert = get_object_or_404(FERT, id=id)
+            fert.delete()
+            return JsonResponse({'ok': True})
+        except Exception as e:
+            return JsonResponse({'ok': False, 'error': str(e)})
+
+# ================================
+# 📌 CRUD de BOM (FERT + lista ROH)
+# ================================
+
+def bom(request):
+    context = {
+        'fert_list': FERT.objects.select_related('centro').all(),
+        'roh_list': ROH.objects.select_related('centro').all(),
+        'bom_list': BOM.objects.select_related('fert', 'roh').all(),
+        'sedes': Sede.objects.all()
+    }
+    return render(request, 'admin/bom.html', context)
+
+@csrf_exempt
+def guardar_bom(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        fert_id = data.get('fert_id')
+        roh_id = data.get('roh_id')
         cantidad = data.get('cantidad')
 
-        if not all([padre_id, componente_id, cantidad]):
-            return JsonResponse({'ok': False, 'error': 'Datos incompletos'})
+        if not fert_id or not roh_id or not cantidad:
+            return JsonResponse({'ok': False, 'error': 'Todos los campos son obligatorios.'})
 
-        if padre_id == componente_id:
-            return JsonResponse({'ok': False, 'error': 'Un material no puede componerse de sí mismo'})
+        fert = get_object_or_404(FERT, id=fert_id)
+        roh = get_object_or_404(ROH, id=roh_id)
 
-        try:
-            padre = Material.objects.get(id=padre_id)
-            componente = Material.objects.get(id=componente_id)
+        # Crear o actualizar la relación BOM
+        bom_obj, created = BOM.objects.get_or_create(
+            fert=fert,
+            roh=roh,
+            defaults={'cantidad': cantidad}
+        )
+        if not created:
+            bom_obj.cantidad = cantidad
+            bom_obj.save()
 
-            # Evitar duplicados
-            existente = ComponenteMaterial.objects.filter(
-                material_padre=padre, componente=componente
-            ).first()
+        return JsonResponse({'ok': True})
 
-            if existente:
-                existente.cantidad = cantidad
-                existente.save()
-            else:
-                ComponenteMaterial.objects.create(
-                    material_padre=padre,
-                    componente=componente,
-                    cantidad=cantidad
-                )
-
-            return JsonResponse({'ok': True})
-        except Material.DoesNotExist:
-            return JsonResponse({'ok': False, 'error': 'Material no encontrado'})
-
-
-# ❌ Eliminar componente
 @csrf_exempt
-def eliminar_componente(request):
+def eliminar_bom(request):
     if request.method == 'POST':
         data = json.loads(request.body)
-        componente_id = data.get('id')
+        fert_id = data.get('fert_id')
+        roh_id = data.get('roh_id')
         try:
-            ComponenteMaterial.objects.get(id=componente_id).delete()
+            bom_obj = BOM.objects.get(fert_id=fert_id, roh_id=roh_id)
+            bom_obj.delete()
             return JsonResponse({'ok': True})
-        except ComponenteMaterial.DoesNotExist:
-            return JsonResponse({'ok': False, 'error': 'Componente no encontrado'})
-
-from Inicio.models import ComponenteMaterial
-
-def ver_componentes(request, material_id):
-    material = get_object_or_404(Material, id=material_id)
-    componentes = ComponenteMaterial.objects.filter(material_padre=material).select_related('componente')
-
-    # Excluye al material padre y los que empiezan con tipo 'FERT'
-    materiales = Material.objects.exclude(id=material.id).exclude(tipo__startswith='FERT')
-
-    data = [
-        {
-            'id': c.id,
-            'componente_id': c.componente.id,
-            'componente_nombre': c.componente.nombre,
-            'unidad': c.componente.unidad_medida,
-            'cantidad': float(c.cantidad)
-        }
-        for c in componentes
-    ]
-
-    opciones = [
-        {'id': m.id, 'nombre': m.nombre, 'unidad': m.unidad_medida}
-        for m in materiales
-    ]
-
-    return JsonResponse({'ok': True, 'componentes': data, 'materiales': opciones})
-
-
-@csrf_exempt
-def guardar_componente(request):
-    data = json.loads(request.body)
-    id = data.get('id')
-    padre = Material.objects.get(id=data.get('material_padre'))
-    comp = Material.objects.get(id=data.get('componente'))
-    cantidad = data.get('cantidad')
-
-    if id:
-        comp_mat = ComponenteMaterial.objects.get(id=id)
-        comp_mat.componente = comp
-        comp_mat.cantidad = cantidad
-        comp_mat.save()
-    else:
-        ComponenteMaterial.objects.create(material_padre=padre, componente=comp, cantidad=cantidad)
-
-    return JsonResponse({'ok': True})
-
-@csrf_exempt
-def eliminar_componente(request):
-    data = json.loads(request.body)
-    try:
-        ComponenteMaterial.objects.get(id=data.get('id')).delete()
-        return JsonResponse({'ok': True})
-    except:
-        return JsonResponse({'ok': False, 'error': 'No se pudo eliminar'})
+        except BOM.DoesNotExist:
+            return JsonResponse({'ok': False, 'error': 'La relación BOM no existe.'})

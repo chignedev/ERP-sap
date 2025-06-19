@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">Aprobación de SOLPEDs</h2>
+
+  <div class="row">
+    {% for solped in solpeds %}
+    <div class="col-md-6 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">SOLPED #{{ solped.id }}</h5>
+          <p><strong>Centro:</strong> {{ solped.centro.nombre }}</p>
+          <p><strong>Solicitante:</strong> {{ solped.solicitante.get_full_name }}</p>
+          {% if solped.plan_produccion %}
+          <p><strong>Plan Producción:</strong> #{{ solped.plan_produccion.id }} — {{ solped.plan_produccion.fert.nombre }}</p>
+          {% endif %}
+          <p><strong>Total Estimado:</strong> S/. {{ solped.total_estimado }}</p>
+          <h6>📦 Items:</h6>
+          <table class="table table-sm table-striped">
+            <thead class="table-light">
+              <tr>
+                <th>Material</th>
+                <th>Cantidad</th>
+                <th>Unidad</th>
+                <th>Costo</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in solped.items.all %}
+              <tr>
+                <td>{{ item.material.nombre }}</td>
+                <td>{{ item.cantidad }}</td>
+                <td>{{ item.unidad }}</td>
+                <td>S/. {{ item.costo_estimado }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <div class="text-end">
+            <button class="btn btn-success btn-sm me-2" onclick="cambiarEstado({{ solped.id }}, 'aprobar')">✅ Aprobar</button>
+            <button class="btn btn-danger btn-sm" onclick="cambiarEstado({{ solped.id }}, 'rechazar')">❌ Rechazar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% empty %}
+    <p class="text-muted">No hay SOLPEDs pendientes de aprobación.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+function cambiarEstado(id, action) {
+  Swal.fire({
+    title: action === 'aprobar' ? '¿Aprobar esta SOLPED?' : '¿Rechazar esta SOLPED?',
+    icon: action === 'aprobar' ? 'success' : 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, confirmar'
+  }).then(result => {
+    if (result.isConfirmed) {
+      fetch(`/admin/aprobacion/guardar/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({ id: id, action: action })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) {
+          location.reload();
+        } else {
+          Swal.fire('Error', data.error, 'error');
+        }
+      });
+    }
+  });
+}
+</script>
+{% endblock %}

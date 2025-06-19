@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Sedes</h2>
+    
+    <button class="btn btn-primary mb-4" onclick="formSede()">+ Nueva Sede</button>
+
+    <div class="row">
+        {% for sede in sedes %}
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ sede.nombre }}</h5>
+                    <p class="card-text"><strong>Dirección:</strong> {{ sede.direccion }}</p>
+                    <p class="card-text"><strong>Ciudad:</strong> {{ sede.ciudad }}</p>
+                    <p class="card-text"><strong>País:</strong> {{ sede.pais }}</p>
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-sm btn-warning me-2" onclick="formSede({{ sede.id }}, '{{ sede.nombre|escapejs }}', '{{ sede.direccion|escapejs }}', '{{ sede.ciudad|escapejs }}', '{{ sede.pais|escapejs }}')">
+                            Editar
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="eliminarSede({{ sede.id }})">
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <p class="text-center">No hay sedes registradas.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function formSede(id = null, nombre = '', direccion = '', ciudad = '', pais = '') {
+    Swal.fire({
+        title: id ? 'Editar Sede' : 'Nueva Sede',
+        html:
+            `<input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">
+             <input id="direccion" class="swal2-input" placeholder="Dirección" value="${direccion}">
+             <input id="ciudad" class="swal2-input" placeholder="Ciudad" value="${ciudad}">
+             <input id="pais" class="swal2-input" placeholder="País" value="${pais}">`,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        preConfirm: () => {
+            const nombre = document.getElementById('nombre').value.trim();
+            const direccion = document.getElementById('direccion').value.trim();
+            const ciudad = document.getElementById('ciudad').value.trim();
+            const pais = document.getElementById('pais').value.trim();
+
+            if (!nombre || !direccion || !ciudad || !pais) {
+                Swal.showValidationMessage('Todos los campos son obligatorios');
+                return false;
+            }
+
+            return fetch(`/admin/sedes/guardar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ id, nombre, direccion, ciudad, pais }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) location.reload();
+                else Swal.showValidationMessage(data.error);
+            });
+        }
+    });
+}
+
+function eliminarSede(id) {
+    Swal.fire({
+        title: '¿Eliminar sede?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/admin/sedes/eliminar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ id }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) location.reload();
+                else Swal.fire('Error', data.error, 'error');
+            });
+        }
+    });
+}
+</script>
+{% endblock %}

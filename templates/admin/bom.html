@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2 class="mb-4">Gestión de FERT y Listas de Materiales (BOM)</h2>
+
+    <!-- Botón para crear FERT -->
+    <button class="btn btn-success mb-4" onclick="formFERT()">+ Nuevo FERT</button>
+
+    <div class="row">
+        {% for fert in fert_list %}
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ fert.nombre }}</h5>
+                    <p class="card-text"><strong>Código:</strong> {{ fert.codigo }}</p>
+                    <p class="card-text"><strong>Centro:</strong> {{ fert.centro.nombre }}</p>
+                    <p class="card-text"><strong>Unidad Base:</strong> {{ fert.unidad_base }}</p>
+                    <p class="card-text"><strong>Precio:</strong> S/. {{ fert.precio }}</p>
+
+                    <!-- Botones de acción -->
+                    <div class="mb-3 d-flex justify-content-end flex-wrap">
+                        <button class="btn btn-sm btn-success me-2 mb-2"
+                            onclick="formBOM({{ fert.id }}, '{{ fert.nombre|escapejs }}')">
+                            + Añadir Insumo
+                        </button>
+                        <button class="btn btn-sm btn-warning me-2 mb-2"
+                            onclick="formFERT({{ fert.id }}, '{{ fert.codigo }}', '{{ fert.nombre|escapejs }}', '{{ fert.unidad_base }}', '{{ fert.precio }}', {{ fert.centro.id }})">
+                            Editar FERT
+                        </button>
+                        <button class="btn btn-sm btn-danger mb-2"
+                            onclick="eliminarFERT({{ fert.id }})">
+                            Eliminar FERT
+                        </button>
+                    </div>
+
+                    <hr>
+                    <h6>Insumos (ROH):</h6>
+                    {% for item in fert.componentes.all %}
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-1">
+                        <div>
+                            {{ item.roh.nombre }} ({{ item.roh.codigo }}) — {{ item.cantidad }} {{ item.roh.unidad_base }}
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger"
+                            onclick="eliminarBOM({{ item.fert.id }}, {{ item.roh.id }})">
+                            Quitar
+                        </button>
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">Sin insumos registrados.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <p class="text-center">No hay FERT registrados.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<script>
+/* ------------------------
+   👉 FERT CRUD 
+------------------------ */
+function formFERT(id = null, codigo = '', nombre = '', unidad_base = 'KG', precio = '', centro_id = '') {
+    let opcionesCentros = `
+        <div style="text-align:left; margin-top:10px;">
+            <label for="centro_id" style="font-weight:bold; display:block; margin-bottom:5px;">Seleccione Centro:</label>
+            <select id="centro_id" class="swal2-input" style="width:100%; display:block;">
+                <option value="">-- Seleccione un centro --</option>
+                {% for sede in sedes %}
+                    <option value="{{ sede.id }}">{{ sede.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    `;
+
+    Swal.fire({
+        title: id ? 'Editar FERT' : 'Nuevo FERT',
+        html:
+            `<input id="codigo" class="swal2-input" placeholder="Código (8 dígitos)" value="${codigo}">
+             <input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">
+             <input id="unidad_base" class="swal2-input" placeholder="Unidad Base (ej. KG)" value="${unidad_base}">
+             <input id="precio" type="number" class="swal2-input" placeholder="Precio" value="${precio}">
+             ${opcionesCentros}`,
+        didOpen: () => {
+            if (centro_id) {
+                document.getElementById('centro_id').value = centro_id;
+            }
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        preConfirm: () => {
+            const codigo = document.getElementById('codigo').value.trim();
+            const nombre = document.getElementById('nombre').value.trim();
+            const unidad_base = document.getElementById('unidad_base').value.trim();
+            const precio = document.getElementById('precio').value.trim();
+            const centro_id = document.getElementById('centro_id').value;
+
+            if (!codigo || !nombre || !precio || !centro_id) {
+                Swal.showValidationMessage('Todos los campos son obligatorios.');
+                return false;
+            }
+
+            return fetch(`/admin/fert/guardar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ id, codigo, nombre, unidad_base, precio, centro_id }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) location.reload();
+                else Swal.showValidationMessage(data.error);
+            });
+        }
+    });
+}
+
+function eliminarFERT(id) {
+    Swal.fire({
+        title: '¿Eliminar FERT?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/admin/fert/eliminar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ id }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) location.reload();
+                else Swal.fire('Error', data.error, 'error');
+            });
+        }
+    });
+}
+
+/* ------------------------
+   👉 BOM CRUD 
+------------------------ */
+function formBOM(fert_id, fert_name = '') {
+    let selectRoh = `
+        <div style="text-align:left; margin-bottom:10px;">
+            <label for="roh_id" style="font-weight:bold;">Seleccione ROH:</label>
+            <select id="roh_id" class="swal2-input" style="width:100%; display:block;">
+                <option value="">-- Seleccione --</option>
+                {% for roh in roh_list %}
+                    <option value="{{ roh.id }}">{{ roh.nombre }} ({{ roh.codigo }})</option>
+                {% endfor %}
+            </select>
+        </div>
+    `;
+
+    Swal.fire({
+        title: `Añadir Insumo a FERT: ${fert_name}`,
+        html:
+            `${selectRoh}
+             <input id="cantidad" type="number" class="swal2-input" placeholder="Cantidad">`,
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        preConfirm: () => {
+            const roh_id = document.getElementById('roh_id').value;
+            const cantidad = document.getElementById('cantidad').value;
+
+            if (!roh_id || !cantidad) {
+                Swal.showValidationMessage('Todos los campos son obligatorios.');
+                return false;
+            }
+
+            return fetch(`/admin/bom/guardar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ fert_id, roh_id, cantidad }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) location.reload();
+                else Swal.showValidationMessage(data.error);
+            });
+        }
+    });
+}
+
+function eliminarBOM(fert_id, roh_id) {
+    Swal.fire({
+        title: '¿Quitar insumo?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, quitar',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/admin/bom/eliminar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ fert_id, roh_id }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) location.reload();
+                else Swal.fire('Error', data.error, 'error');
+            });
+        }
+    });
+}
+</script>
+{% endblock %}

@@ -26,4 +26,9 @@ urlpatterns = [
     #     auth_views.LogoutView.as_view(next_page='Inicio:index'),
     #     name='logout'
     # ),
+    path(
+        'logout/', 
+        auth_views.LogoutView.as_view(next_page='Inicio:index'),
+        name='logout'
+    ),
 ]

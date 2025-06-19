@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">Entradas de Materiales</h2>
+
+  <button class="btn btn-primary mb-4" onclick="formEntrada()">+ Nueva Entrada</button>
+
+  <div class="row">
+    {% for entrada in entradas %}
+    <div class="col-md-6 mb-4">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5>Entrada #{{ entrada.id }} {% if entrada.orden_compra %}- OC #{{ entrada.orden_compra.id }}{% endif %}</h5>
+          <p><strong>Almacén:</strong> {{ entrada.almacen.nombre }}</p>
+          <p><strong>Comentario:</strong> {{ entrada.comentario|default:"Sin comentario" }}</p>
+          <h6>Items:</h6>
+          <table class="table table-sm table-striped">
+            <thead><tr><th>Material</th><th>Cantidad</th></tr></thead>
+            <tbody>
+              {% for item in entrada.items.all %}
+              <tr>
+                <td>{{ item.material.nombre }}</td>
+                <td>{{ item.cantidad }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <button class="btn btn-danger btn-sm" onclick="eliminarEntrada({{ entrada.id }})">Eliminar</button>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ✅ JSON seguro para JS -->
+{{ ordenes|json_script:"ordenes-data" }}
+{{ almacenes|json_script:"almacenes-data" }}
+
+<script>
+const ordenes = JSON.parse(document.getElementById('ordenes-data').textContent);
+const almacenes = JSON.parse(document.getElementById('almacenes-data').textContent);
+
+function formEntrada() {
+  let opcionesAlmacen = almacenes.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
+  let opcionesOC = `<option value="">-- Opcional: Orden de Compra --</option>`;
+  ordenes.forEach(o => { opcionesOC += `<option value="${o.id}">OC #${o.id}</option>`; });
+
+  Swal.fire({
+    title: 'Nueva Entrada',
+    html: `
+      <label>Almacén:</label>
+      <select id="almacen_id" class="form-control mb-2">${opcionesAlmacen}</select>
+
+      <label>Orden de Compra:</label>
+      <select id="oc_id" class="form-control mb-2" onchange="loadItemsEntrada()">${opcionesOC}</select>
+
+      <div id="itemsContainer"></div>
+    `,
+    width: '80%',
+    showCancelButton: true,
+    confirmButtonText: 'Guardar Entrada',
+    preConfirm: () => {
+      const almacen_id = document.getElementById('almacen_id').value;
+      const oc_id = document.getElementById('oc_id').value || null;
+      const items = [];
+
+      document.querySelectorAll('.row-item').forEach(row => {
+        items.push({
+          oc_item_id: row.dataset.itemId,
+          cantidad: parseInt(row.querySelector('.cantidad').value)
+        });
+      });
+
+      if (!almacen_id || items.length === 0) {
+        Swal.showValidationMessage('Completa el almacén y añade al menos un item.');
+        return false;
+      }
+
+      return fetch(`/admin/entradas/guardar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({
+          almacen_id: almacen_id,
+          orden_compra_id: oc_id,
+          items: items
+        })
+      }).then(r => r.json()).then(data => {
+        if (data.ok) location.reload();
+        else Swal.showValidationMessage(data.error);
+      });
+    }
+  });
+
+  // Limpiar contenedor de items al abrir modal
+  document.getElementById('itemsContainer').innerHTML = '';
+}
+
+function loadItemsEntrada() {
+  const ocId = document.getElementById('oc_id').value;
+  const cont = document.getElementById('itemsContainer');
+  cont.innerHTML = '';
+
+  if (!ocId) return;
+
+  const oc = ordenes.find(o => o.id == ocId);
+  let html = `<table class="table table-bordered">
+    <thead><tr><th>Material</th><th>Cantidad a ingresar</th></tr></thead>
+    <tbody>`;
+
+  oc.items.forEach(i => {
+    html += `<tr class="row-item" data-item-id="${i.id}">
+      <td>${i.descripcion}</td>
+      <td><input type="number" min="1" value="${i.cantidad}" class="form-control cantidad"></td>
+    </tr>`;
+  });
+
+  html += `</tbody></table>`;
+  cont.innerHTML = html;
+}
+
+function eliminarEntrada(id) {
+  Swal.fire({
+    title: '¿Eliminar Entrada?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar'
+  }).then(r => {
+    if (r.isConfirmed) {
+      fetch(`/admin/entradas/eliminar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ id: id })
+      }).then(res => res.json()).then(data => {
+        if (data.ok) location.reload();
+        else Swal.fire('Error', data.error, 'error');
+      });
+    }
+  });
+}
+</script>
+{% endblock %}

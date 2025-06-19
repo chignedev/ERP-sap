@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Almacenes</h2>
+    
+    <button class="btn btn-primary mb-4" onclick="formAlmacen()">+ Nuevo Almacén</button>
+
+    <div class="row">
+        {% for almacen in almacenes %}
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ almacen.nombre }}</h5>
+                    <p class="card-text"><strong>Descripción:</strong> {{ almacen.descripcion }}</p>
+                    <p class="card-text"><strong>Sede:</strong> {{ almacen.sede.nombre }}</p>
+                    <div class="d-flex justify-content-end">
+                        <button class="btn btn-sm btn-warning me-2"
+                            onclick="formAlmacen({{ almacen.id }}, '{{ almacen.nombre|escapejs }}', '{{ almacen.descripcion|escapejs }}', {{ almacen.sede.id }})">
+                            Editar
+                        </button>
+                        <button class="btn btn-sm btn-danger"
+                            onclick="eliminarAlmacen({{ almacen.id }})">
+                            Eliminar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+            <p class="text-center">No hay almacenes registrados.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+function formAlmacen(id = null, nombre = '', descripcion = '', sede_id = '') {
+    let opcionesSedes = `
+        <div style="text-align:left; margin-top:10px;">
+            <label for="sede_id" style="font-weight:bold; display:block; margin-bottom:5px;">Seleccione Sede:</label>
+            <select id="sede_id" class="swal2-input" style="width:100%; display:block;">
+                <option value="">-- Seleccione una sede --</option>
+                {% for sede in sedes %}
+                    <option value="{{ sede.id }}">{{ sede.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    `;
+
+    Swal.fire({
+        title: id ? 'Editar Almacén' : 'Nuevo Almacén',
+        html:
+            `<input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">
+             <input id="descripcion" class="swal2-input" placeholder="Descripción" value="${descripcion}">
+             ${opcionesSedes}`,
+        didOpen: () => {
+            if (sede_id) {
+                document.getElementById('sede_id').value = sede_id;
+            }
+        },
+        showCancelButton: true,
+        confirmButtonText: 'Guardar',
+        preConfirm: () => {
+            const nombre = document.getElementById('nombre').value.trim();
+            const descripcion = document.getElementById('descripcion').value.trim();
+            const sede_id = document.getElementById('sede_id').value;
+
+            if (!nombre || !sede_id) {
+                Swal.showValidationMessage('Nombre y Sede son obligatorios');
+                return false;
+            }
+
+            return fetch(`/admin/almacenes/guardar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ id, nombre, descripcion, sede_id }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) location.reload();
+                else Swal.showValidationMessage(data.error);
+            });
+        }
+    });
+}
+
+function eliminarAlmacen(id) {
+    Swal.fire({
+        title: '¿Eliminar almacén?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            fetch(`/admin/almacenes/eliminar/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}',
+                },
+                body: JSON.stringify({ id }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.ok) location.reload();
+                else Swal.fire('Error', data.error, 'error');
+            });
+        }
+    });
+}
+</script>
+{% endblock %}

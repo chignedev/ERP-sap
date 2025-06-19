@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">📋 Proveedores</h2>
+
+  <button class="btn btn-primary mb-3" onclick="formProveedor()">+ Nuevo Proveedor</button>
+
+  <table class="table table-bordered table-striped">
+    <thead class="table-light">
+      <tr>
+        <th>Nombre</th>
+        <th>RUC</th>
+        <th>Contacto</th>
+        <th>Teléfono</th>
+        <th>Email</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in proveedores %}
+      <tr>
+        <td>{{ p.nombre }}</td>
+        <td>{{ p.ruc }}</td>
+        <td>{{ p.contacto }}</td>
+        <td>{{ p.telefono }}</td>
+        <td>{{ p.email }}</td>
+        <td>
+          <button class="btn btn-warning btn-sm" onclick="formProveedor({{ p.id }}, '{{ p.nombre|escapejs }}', '{{ p.ruc }}', '{{ p.direccion|escapejs }}', '{{ p.telefono }}', '{{ p.email }}', '{{ p.contacto|escapejs }}')">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="eliminarProveedor({{ p.id }})">Eliminar</button>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted">No hay proveedores registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+function formProveedor(id = null, nombre = '', ruc = '', direccion = '', telefono = '', email = '', contacto = '') {
+  Swal.fire({
+    title: id ? 'Editar Proveedor' : 'Nuevo Proveedor',
+    html: `
+      <input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">
+      <input id="ruc" class="swal2-input" placeholder="RUC" value="${ruc}">
+      <input id="direccion" class="swal2-input" placeholder="Dirección" value="${direccion}">
+      <input id="telefono" class="swal2-input" placeholder="Teléfono" value="${telefono}">
+      <input id="email" class="swal2-input" placeholder="Email" value="${email}">
+      <input id="contacto" class="swal2-input" placeholder="Contacto" value="${contacto}">
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Guardar',
+    preConfirm: () => {
+      const nombre = document.getElementById('nombre').value.trim();
+      const ruc = document.getElementById('ruc').value.trim();
+      const direccion = document.getElementById('direccion').value.trim();
+      const telefono = document.getElementById('telefono').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const contacto = document.getElementById('contacto').value.trim();
+
+      if (!nombre || !ruc) {
+        Swal.showValidationMessage('Nombre y RUC son obligatorios.');
+        return false;
+      }
+
+      return fetch(`/admin/proveedores/guardar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ id, nombre, ruc, direccion, telefono, email, contacto })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.ok) location.reload();
+        else Swal.showValidationMessage(data.error);
+      });
+    }
+  });
+}
+
+function eliminarProveedor(id) {
+  Swal.fire({
+    title: '¿Eliminar proveedor?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar'
+  }).then(r => {
+    if (r.isConfirmed) {
+      fetch(`/admin/proveedores/eliminar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({ id: id })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok) location.reload();
+        else Swal.fire('Error', data.error, 'error');
+      });
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">Transferencias de Stock</h2>
+
+  <button class="btn btn-primary mb-4" onclick="formMovimiento()">+ Nueva Transferencia</button>
+
+  <div class="row">
+    {% for almacen in almacenes %}
+    <div class="col-md-4 mb-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">{{ almacen.nombre }}</h5>
+          <p><strong>Stock total:</strong> {{ almacen.cantidad }}</p>
+          <h6>Movimientos recientes:</h6>
+          <ul class="list-group list-group-flush">
+            {% for mov in movimientos|dictsortreversed:"fecha" %}
+              {% if mov.almacen.id == almacen.id %}
+              <li class="list-group-item p-1">
+                <small> {{ mov.material.nombre }} 
+                ({{ mov.cantidad }})</small><br>
+                <small class="text-muted">{{ mov.motivo }} - {{ mov.referencia }}</small>
+              </li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Datos JSON -->
+{{ almacenes|json_script:"almacenes-data" }}
+{{ materiales|json_script:"materiales-data" }}
+
+<script>
+const almacenes = JSON.parse(document.getElementById('almacenes-data').textContent);
+const materiales = JSON.parse(document.getElementById('materiales-data').textContent);
+
+function formMovimiento() {
+  let opcionesAlmacen = almacenes.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
+  let opcionesMaterial = materiales.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+
+  Swal.fire({
+    title: 'Nueva Transferencia',
+    html: `
+      <label>Almacén Origen:</label>
+      <select id="origen_id" class="form-control mb-2">${opcionesAlmacen}</select>
+      <label>Almacén Destino:</label>
+      <select id="destino_id" class="form-control mb-2">${opcionesAlmacen}</select>
+      <label>Material:</label>
+      <select id="material_id" class="form-control mb-2">${opcionesMaterial}</select>
+      <label>Cantidad:</label>
+      <input id="cantidad" type="number" class="form-control mb-2" placeholder="Cantidad">
+      <label>Motivo:</label>
+      <input id="motivo" type="text" class="form-control mb-2" placeholder="Motivo (opcional)">
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Registrar',
+    preConfirm: () => {
+      const origen_id = document.getElementById('origen_id').value;
+      const destino_id = document.getElementById('destino_id').value;
+      const material_id = document.getElementById('material_id').value;
+      const cantidad = document.getElementById('cantidad').value;
+      const motivo = document.getElementById('motivo').value;
+
+      if (!origen_id || !destino_id || !material_id || !cantidad) {
+        Swal.showValidationMessage('Completa todos los campos.');
+        return false;
+      }
+
+      if (origen_id === destino_id) {
+        Swal.showValidationMessage('El origen y destino no pueden ser iguales.');
+        return false;
+      }
+
+      return fetch(`/admin/movimientos/guardar/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        body: JSON.stringify({
+          origen_id: origen_id,
+          destino_id: destino_id,
+          material_id: material_id,
+          cantidad: cantidad,
+          motivo: motivo
+        })
+      }).then(r => r.json()).then(data => {
+        if (data.ok) location.reload();
+        else Swal.showValidationMessage(data.error);
+      });
+    }
+  });
+}
+</script>
+{% endblock %}

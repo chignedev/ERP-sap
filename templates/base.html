@@ -127,14 +127,51 @@
       <span class="link-text">Admin</span>
       <button id="toggleSidebar"><i class="fas fa-bars"></i></button>
     </div>
+    <div class="px-3 mb-3 mt-1">
+      {% if user.is_authenticated %}
+        <p class="mb-0">{{ user.first_name|title }}, Bienvenido!</p>
+        <form id="logout-form" action="{% url 'Inicio:logout' %}" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger btn-sm mt-2 w-100">
+            <i class="fas fa-sign-out-alt"></i> <span class="link-text">Cerrar Sesión</span>
+          </button>
+        </form>
+      {% else %}
+        <p>Bienvenido, Tester!</p>
+      {% endif %}
+    </div>
+
+    {% comment %} Menú dinámico con secciones {% endcomment %}
     <ul class="nav flex-column px-2">
-      {% for item in menu_links %}
-      <li class="nav-item">
-        <a class="nav-link {% if item.danger %}text-danger{% endif %}" href="{{ item.url }}">
-          <i class="fas {{ item.icon }}"></i>
-          <span class="link-text">{{ item.name }}</span>
-        </a>
-      </li>
+        <ul class="list-unstyled collapse-menu">
+          <li>
+              <a class="nav-link" href="{% url 'Admin:inicio' %}">
+                <i class="fas fa-tachometer-alt"></i>
+                <span class="link-text">Dashboard</span>
+              </a>
+            </li>
+        </ul>
+      {% for section, items in menu_links.items %}
+        <li class="nav-item fw-bold text-uppercase mt-3 mb-1 px-2 small d-flex justify-content-between">
+          <span>{{ section }}</span>
+          <button class="toggle-menu-btn-rounded" data-target="#menu{{ forloop.counter }}" style="
+                border: none;
+                background: transparent;
+                color: white;
+            ">
+            <i class="fa-solid fa-chevron-down"></i>
+          </button>
+        </li>
+        <ul class="list-unstyled collapse-menu" id="menu{{ forloop.counter }}">
+          {% for item in items %}
+            <li>
+              <a class="nav-link" href="{{ item.url }}">
+                <i class="fas {{ item.icon }}"></i>
+                <span class="link-text">{{ item.name }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
       {% endfor %}
     </ul>
   </nav>
@@ -146,11 +183,10 @@
   </div>
 </div>
 
+
 <script>
   const sidebar = document.getElementById('sidebar');
   const toggleBtn = document.getElementById('toggleSidebar');
-
-  // Restaurar estado desde localStorage al cargar
   const savedState = localStorage.getItem('sidebarState');
   if (savedState === 'collapsed') {
     sidebar.classList.remove('expanded');
@@ -160,28 +196,34 @@
     sidebar.classList.add('expanded');
   }
 
-  // Mostrar u ocultar texto
-  function updateLinkTextVisibility() {
-    document.querySelectorAll('.sidebar .link-text').forEach(span => {
-      span.style.display = sidebar.classList.contains('collapsed') ? 'none' : 'inline';
-    });
-  }
-
-  updateLinkTextVisibility();
-
-  // Alternar estado al hacer click
   toggleBtn.addEventListener('click', () => {
     sidebar.classList.toggle('collapsed');
     sidebar.classList.toggle('expanded');
+    localStorage.setItem('sidebarState', sidebar.classList.contains('collapsed') ? 'collapsed' : 'expanded');
+  });
 
-    // Guardar estado actual
-    const currentState = sidebar.classList.contains('collapsed') ? 'collapsed' : 'expanded';
-    localStorage.setItem('sidebarState', currentState);
+  // Acordeón con localStorage
+  document.querySelectorAll(".toggle-menu-btn-rounded").forEach(btn => {
+    const targetId = btn.dataset.target;
+    const target = document.querySelector(targetId);
+    const icon = btn.querySelector("i");
+    const saved = localStorage.getItem(targetId);
+    if (saved === "open") {
+      target.style.display = "block";
+      icon.classList.replace("fa-chevron-down", "fa-chevron-up");
+    } else {
+      target.style.display = "none";
+    }
 
-    updateLinkTextVisibility();
+    btn.addEventListener('click', () => {
+      const isOpen = target.style.display === "block";
+      target.style.display = isOpen ? "none" : "block";
+      icon.classList.toggle("fa-chevron-up", !isOpen);
+      icon.classList.toggle("fa-chevron-down", isOpen);
+      localStorage.setItem(targetId, isOpen ? "closed" : "open");
+    });
   });
 </script>
-
 
 </body>
 </html>
