@@ -11,7 +11,7 @@
     <div class="col-md-6 mb-4">
       <div class="card shadow-sm h-100">
         <div class="card-body">
-          <h5>OC #{{ oc.id }} — de SOLPED #{{ oc.solped.id }}</h5>
+          <h5>Orden de Compra #{{ oc.id }} — de SOLPED #{{ oc.solped.id }}</h5>
           <p><strong>Solicitante:</strong> {{ oc.solicitante.get_full_name }}</p>
           <p><strong>Total Estimado:</strong> S/. {{ oc.total_estimado }}</p>
 
@@ -55,7 +55,7 @@ function formOrdenCompra() {
   Swal.fire({
     title: 'Nueva Orden de Compra',
     html: `
-      <label>SOLPED:</label>
+      <h5 class="text-start">SOLPED:</h5>
       <select id="solped_id" class="form-control mb-2" onchange="loadItems()">${optionsSolped}</select>
 
       <div id="itemsContainer"></div>

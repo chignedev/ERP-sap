@@ -12,15 +12,14 @@
       <div class="card shadow-sm h-100">
         <div class="card-body">
           <h5 class="card-title">{{ almacen.nombre }}</h5>
-          <p><strong>Stock total:</strong> {{ almacen.cantidad }}</p>
-          <h6>Movimientos recientes:</h6>
-          <ul class="list-group list-group-flush">
-            {% for mov in movimientos|dictsortreversed:"fecha" %}
-              {% if mov.almacen.id == almacen.id %}
-              <li class="list-group-item p-1">
-                <small> {{ mov.material.nombre }} 
-                ({{ mov.cantidad }})</small><br>
-                <small class="text-muted">{{ mov.motivo }} - {{ mov.referencia }}</small>
+
+          <h6 class="mt-3">📦 Stock actual:</h6>
+          <ul class="list-group list-group-flush mb-3">
+            {% for mat in materiales_stock %}
+              {% if mat.almacen_id == almacen.id and mat.cantidad > 0 %}
+              <li class="list-group-item d-flex justify-content-between p-1">
+                <span>• {{ mat.nombre }}</span>
+                <span><strong>{{ mat.cantidad }}</strong> {{ mat.unidad }}</span>
               </li>
               {% endif %}
             {% endfor %}
@@ -32,34 +31,67 @@
   </div>
 </div>
 
-<!-- Datos JSON -->
+<!-- Datos JSON seguros -->
 {{ almacenes|json_script:"almacenes-data" }}
 {{ materiales|json_script:"materiales-data" }}
+{{ stock_por_almacen|json_script:"stock-por-almacen" }}
+{{ stock_disponible|json_script:"stock-disponible-data" }}
 
 <script>
 const almacenes = JSON.parse(document.getElementById('almacenes-data').textContent);
 const materiales = JSON.parse(document.getElementById('materiales-data').textContent);
+const stockPorAlmacen = JSON.parse(document.getElementById('stock-por-almacen').textContent);
+const stockDisponible = JSON.parse(document.getElementById('stock-disponible-data').textContent);
 
 function formMovimiento() {
   let opcionesAlmacen = almacenes.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
-  let opcionesMaterial = materiales.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
 
   Swal.fire({
     title: 'Nueva Transferencia',
     html: `
-      <label>Almacén Origen:</label>
-      <select id="origen_id" class="form-control mb-2">${opcionesAlmacen}</select>
-      <label>Almacén Destino:</label>
-      <select id="destino_id" class="form-control mb-2">${opcionesAlmacen}</select>
-      <label>Material:</label>
-      <select id="material_id" class="form-control mb-2">${opcionesMaterial}</select>
-      <label>Cantidad:</label>
-      <input id="cantidad" type="number" class="form-control mb-2" placeholder="Cantidad">
-      <label>Motivo:</label>
-      <input id="motivo" type="text" class="form-control mb-2" placeholder="Motivo (opcional)">
+      <div class="container text-start">
+        <div class="row">
+          <div class="col-md-6">
+            <label class="form-label">Almacén Origen:</label>
+            <select id="origen_id" class="form-control mb-2" onchange="actualizarMateriales()">
+              ${opcionesAlmacen}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Almacén Destino:</label>
+            <select id="destino_id" class="form-control mb-2">${opcionesAlmacen}</select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <label class="form-label">Material:</label>
+            <select id="material_id" class="form-control mb-2"></select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Cantidad:</label>
+            <input id="cantidad" type="number" min="1" class="form-control mb-2" placeholder="Cantidad">
+            <div id="stock_info" class="form-text text-end text-muted"></div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-12">
+            <label class="form-label">Motivo:</label>
+            <input id="motivo" type="text" class="form-control mb-2" placeholder="Motivo (opcional)">
+          </div>
+        </div>
+      </div>
     `,
+    width: '60%',
     showCancelButton: true,
     confirmButtonText: 'Registrar',
+    didOpen: () => {
+      actualizarMateriales();
+
+      document.getElementById('material_id').addEventListener('change', actualizarStockDisponible);
+      document.getElementById('cantidad').addEventListener('input', validarCantidad);
+    },
     preConfirm: () => {
       const origen_id = document.getElementById('origen_id').value;
       const destino_id = document.getElementById('destino_id').value;
@@ -77,15 +109,25 @@ function formMovimiento() {
         return false;
       }
 
+      const clave = `${origen_id}_${material_id}`;
+      const disponible = stockDisponible[clave] || 0;
+      if (parseFloat(cantidad) > disponible) {
+        Swal.showValidationMessage(`Solo hay ${disponible} unidades disponibles.`);
+        return false;
+      }
+
       return fetch(`/admin/movimientos/guardar/`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
         body: JSON.stringify({
-          origen_id: origen_id,
-          destino_id: destino_id,
-          material_id: material_id,
-          cantidad: cantidad,
-          motivo: motivo
+          origen_id,
+          destino_id,
+          material_id,
+          cantidad,
+          motivo
         })
       }).then(r => r.json()).then(data => {
         if (data.ok) location.reload();
@@ -93,6 +135,50 @@ function formMovimiento() {
       });
     }
   });
+}
+
+function actualizarMateriales() {
+  const origenId = document.getElementById('origen_id').value;
+  const selectMaterial = document.getElementById('material_id');
+  const disponibles = stockPorAlmacen[origenId] || [];
+
+  let options = disponibles.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+  selectMaterial.innerHTML = options;
+
+  document.getElementById('cantidad').value = '';
+  actualizarStockDisponible();
+}
+
+function actualizarStockDisponible() {
+  const origenId = document.getElementById('origen_id').value;
+  const materialId = document.getElementById('material_id').value;
+  const clave = `${origenId}_${materialId}`;
+  const disponible = stockDisponible[clave] || 0;
+
+  const cantidadInput = document.getElementById('cantidad');
+  const stockInfo = document.getElementById('stock_info');
+
+  cantidadInput.max = disponible;
+  cantidadInput.placeholder = `Máx: ${disponible}`;
+  stockInfo.textContent = `Disponible: ${disponible}`;
+
+  validarCantidad(); // Revalida si cambió el stock
+}
+
+function validarCantidad() {
+  const origenId = document.getElementById('origen_id').value;
+  const materialId = document.getElementById('material_id').value;
+  const clave = `${origenId}_${materialId}`;
+  const disponible = stockDisponible[clave] || 0;
+
+  const input = document.getElementById('cantidad');
+  const valor = parseFloat(input.value || 0);
+
+  if (valor > disponible) {
+    input.classList.add('is-invalid');
+  } else {
+    input.classList.remove('is-invalid');
+  }
 }
 </script>
 {% endblock %}

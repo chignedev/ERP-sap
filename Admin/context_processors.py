@@ -16,7 +16,7 @@ def menu_context(request):
             {"name": "BOM (FERT)", "icon": "fa-project-diagram", "url": reverse('Admin:bom')},
         ],
         "Planificación": [
-            {"name": "Planes de Producción", "icon": "fa-tasks", "url": reverse('Admin:planificacion')},
+            {"name": "Planes de Ventas", "icon": "fa-tasks", "url": reverse('Admin:planificacion')},
             {"name": "SOLPED", "icon": "fa-file-signature", "url": reverse('Admin:solped')},
         ],
         "Aprobación": [

@@ -12,22 +12,33 @@ from Inicio.models import (
 # 📌 Entradas de Materiales
 # ===============================
 
+from django.db.models import Sum
+
 def entradas(request):
     entradas = EntradaMaterial.objects.select_related('almacen', 'orden_compra').prefetch_related('items__material')
 
     ordenes = []
     for oc in OrdenCompra.objects.prefetch_related('items'):
-        ordenes.append({
-            "id": oc.id,
-            "items": [
-                {
+        items = []
+
+        for item in oc.items.all():
+            ingresado = EntradaItem.objects.filter(oc_item_id=item.id).aggregate(total=Sum('cantidad'))['total'] or 0
+            pendiente = max(item.cantidad - ingresado, 0)
+
+            # 🔒 Solo agregamos ítems con pendiente > 0
+            if pendiente > 0:
+                items.append({
                     "id": item.id,
                     "descripcion": item.descripcion,
-                    "cantidad": item.cantidad
-                }
-                for item in oc.items.all()
-            ]
-        })
+                    "cantidad": pendiente
+                })
+
+        # 🔒 Solo agregamos la OC si tiene al menos un ítem pendiente
+        if items:
+            ordenes.append({
+                "id": oc.id,
+                "items": items
+            })
 
     almacenes = list(Almacen.objects.filter(nombre__icontains="Materias Primas").values('id', 'nombre'))
 
@@ -36,6 +47,9 @@ def entradas(request):
         "ordenes": ordenes,
         "almacenes": almacenes
     })
+
+
+
 
 
 @csrf_exempt
@@ -131,22 +145,66 @@ def eliminar_entrada(request):
 # ===============================
 
 from Inicio.models import Almacen, MovimientoStock, ROH
+from django.db.models import Sum
+from collections import defaultdict
 
 def movimientos(request):
     movimientos = MovimientoStock.objects.select_related('almacen', 'material').order_by('-fecha')
 
-    # ⚡️ IMPORTANTE: convertir almacenes a lista de dicts JSON-safe
     almacenes = list(
         Almacen.objects.filter(nombre__icontains="Materias Primas")
-        .values('id', 'nombre', 'cantidad')  # añade 'cantidad' para mostrar stock
+        .values('id', 'nombre')
     )
-    materiales = list(ROH.objects.values('id', 'nombre'))
+
+    materiales_ids_con_stock = (
+        MovimientoStock.objects
+        .values('material')
+        .annotate(total=Sum('cantidad'))
+        .filter(total__gt=0)
+        .values_list('material', flat=True)
+    )
+
+    materiales = list(
+        ROH.objects
+        .filter(id__in=materiales_ids_con_stock)
+        .values('id', 'nombre')
+    )
+
+    # ➕ Estructura adicional: stock por almacén (para filtrar en el modal)
+    stock_qs = (
+        MovimientoStock.objects
+        .values('almacen_id', 'material__id', 'material__nombre')
+        .annotate(cantidad=Sum('cantidad'))
+        .filter(cantidad__gt=0)
+    )
+
+    stock_por_almacen = defaultdict(list)
+    materiales_stock = []
+    stock_disponible = {}
+    
+    for s in stock_qs:
+        stock_por_almacen[s['almacen_id']].append({
+            "id": s['material__id'],
+            "nombre": s['material__nombre']
+        })
+        materiales_stock.append({
+            "nombre": s['material__nombre'],
+            "unidad": ROH.objects.get(id=s['material__id']).unidad_base,
+            "almacen_id": s['almacen_id'],
+            "cantidad": s['cantidad']
+        })
+        clave = f"{s['almacen_id']}_{s['material__id']}"
+        stock_disponible[clave] = s['cantidad']
 
     return render(request, 'admin/movimientos.html', {
         "movimientos": movimientos,
-        "almacenes": almacenes,   # ✅ ahora lista de dicts JSON-safe
-        "materiales": materiales, # ✅ lista de dicts JSON-safe
+        "almacenes": almacenes,
+        "materiales": materiales,
+        "materiales_stock": materiales_stock,
+        "stock_por_almacen": dict(stock_por_almacen),
+        "stock_disponible": stock_disponible
     })
+
 
 
 

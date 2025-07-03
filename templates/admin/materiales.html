@@ -54,10 +54,10 @@ function formMaterial(id = null, codigo = '', nombre = '', unidad_base = 'KG', p
     Swal.fire({
         title: id ? 'Editar Material' : 'Nuevo Material',
         html:
-            `<input id="codigo" class="swal2-input" placeholder="Código (8 dígitos)" value="${codigo}">
-             <input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">
-             <input id="unidad_base" class="swal2-input" placeholder="Unidad Base (ej. KG)" value="${unidad_base}">
-             <input id="precio" type="number" class="swal2-input" placeholder="Precio" value="${precio}">
+            `<input id="codigo" style="width:100%; margin: 2 0" class="swal2-input" placeholder="Código (8 dígitos)" value="${codigo}">
+             <input id="nombre" style="width:100%; margin: 2 0" class="swal2-input" placeholder="Nombre" value="${nombre}">
+             <input id="unidad_base" style="width:100%; margin: 2 0" class="swal2-input" placeholder="Unidad Base (ej. KG)" value="${unidad_base}">
+             <input id="precio" style="width:100%; margin: 2 0" type="number" class="swal2-input" placeholder="Precio" value="${precio}">
              ${opcionesCentros}`,
         didOpen: () => {
             if (centro_id) {

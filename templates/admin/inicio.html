@@ -1,8 +1,53 @@
 {% extends "base.html" %}
-
-{% block title %}Inicio | Admin{% endblock %}
+{% block title %}Dashboard | Admin{% endblock %}
 
 {% block content %}
-  <h3 class="mb-4">Bienvenido al Panel de Administración</h3>
-  <p>Acá podés gestionar el sistema, usuarios, configuración, etc.</p>
+<h3 class="mb-4">Bienvenido al Panel de Administración</h3>
+
+<div class="row g-4">
+  {% for nombre, valor in resumen %}
+    <div class="col-md-4">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="card-title">{{ nombre }}</h5>
+          <h3 class="card-text">{{ valor }}</h3>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Gráfico de ejemplo -->
+<div class="mt-5">
+  <h5>Distribución de Materiales</h5>
+  <canvas id="materialChart" width="400" height="150"></canvas>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ctx = document.getElementById('materialChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['ROH', 'FERT', 'Materiales en BOMs', 'Planes'],
+      datasets: [{
+        label: 'Cantidad',
+        data: [{{ total_roh }}, {{ total_fert }}, {{ total_boms }}, {{ total_planes }}],
+        backgroundColor: ['#42a5f5', '#66bb6a', '#ffa726', '#ab47bc'],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { mode: 'index', intersect: false }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+</script>
 {% endblock %}

@@ -37,40 +37,49 @@
 <script>
 function formSede(id = null, nombre = '', direccion = '', ciudad = '', pais = '') {
     Swal.fire({
-        title: id ? 'Editar Sede' : 'Nueva Sede',
-        html:
-            `<input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">
-             <input id="direccion" class="swal2-input" placeholder="Dirección" value="${direccion}">
-             <input id="ciudad" class="swal2-input" placeholder="Ciudad" value="${ciudad}">
-             <input id="pais" class="swal2-input" placeholder="País" value="${pais}">`,
-        showCancelButton: true,
-        confirmButtonText: 'Guardar',
-        preConfirm: () => {
-            const nombre = document.getElementById('nombre').value.trim();
-            const direccion = document.getElementById('direccion').value.trim();
-            const ciudad = document.getElementById('ciudad').value.trim();
-            const pais = document.getElementById('pais').value.trim();
+    title: id ? 'Editar Sede' : 'Nueva Sede',
+    width: '700px', // más ancho que el estándar
+    html:
+    `<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-top: 10px;">
+        <div style="display: flex; flex-direction: column; gap: 15px; width: 48%;">
+            <input id="nombre" class="swal2-input" style="font-size: 1rem; height: 45px;" placeholder="Nombre" value="${nombre}">
+            <input id="direccion" class="swal2-input" style="font-size: 1rem; height: 45px;" placeholder="Dirección" value="${direccion}">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 15px; width: 48%;">
+            <input id="ciudad" class="swal2-input" style="font-size: 1rem; height: 45px;" placeholder="Ciudad" value="${ciudad}">
+            <input id="pais" class="swal2-input" style="font-size: 1rem; height: 45px;" placeholder="País" value="${pais}">
+        </div>
+    </div>`,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Guardar',
+    preConfirm: () => {
+        const nombre = document.getElementById('nombre').value.trim();
+        const direccion = document.getElementById('direccion').value.trim();
+        const ciudad = document.getElementById('ciudad').value.trim();
+        const pais = document.getElementById('pais').value.trim();
 
-            if (!nombre || !direccion || !ciudad || !pais) {
-                Swal.showValidationMessage('Todos los campos son obligatorios');
-                return false;
-            }
-
-            return fetch(`/admin/sedes/guardar/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}',
-                },
-                body: JSON.stringify({ id, nombre, direccion, ciudad, pais }),
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.ok) location.reload();
-                else Swal.showValidationMessage(data.error);
-            });
+        if (!nombre || !direccion || !ciudad || !pais) {
+            Swal.showValidationMessage('Todos los campos son obligatorios');
+            return false;
         }
-    });
+
+        return fetch(`/admin/sedes/guardar/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({ id, nombre, direccion, ciudad, pais }),
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok) location.reload();
+            else Swal.showValidationMessage(data.error);
+        });
+    }
+});
+
 }
 
 function eliminarSede(id) {

@@ -2,8 +2,20 @@
 
 {% block content %}
 <div class="container mt-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Gestión de FERT y Listas de Materiales (BOM)</h2>
 
-    <h2 class="mb-4">Gestión de FERT y Listas de Materiales (BOM)</h2>
+    <div class="d-flex gap-2 align-items-center">
+        <select id="filtro-sede" class="form-select form-select-sm" onchange="filtrarFERTs()">
+            <option value="">Todas las sedes</option>
+            {% for sede in sedes %}
+                <option value="{{ sede.nombre }}">{{ sede.nombre }}</option>
+            {% endfor %}
+        </select>
+
+        <input type="text" id="filtro-codigo" class="form-control form-control-sm" placeholder="Buscar código..." onkeyup="filtrarFERTs()" style="max-width: 180px;">
+    </div>
+</div>
 
     <!-- Botón para crear FERT -->
     <button class="btn btn-success mb-4" onclick="formFERT()">+ Nuevo FERT</button>
@@ -67,6 +79,13 @@
    👉 FERT CRUD 
 ------------------------ */
 function formFERT(id = null, codigo = '', nombre = '', unidad_base = 'KG', precio = '', centro_id = '') {
+    if (!id && fertCodigos.length > 0) {
+        const maxCodigo = Math.max(...fertCodigos.map(c => parseInt(c, 10)));
+        codigo = String(maxCodigo + 1).padStart(8, '0');
+    } else if (!id) {
+        codigo = "20000001";
+    }
+
     let opcionesCentros = `
         <div style="text-align:left; margin-top:10px;">
             <label for="centro_id" style="font-weight:bold; display:block; margin-bottom:5px;">Seleccione Centro:</label>
@@ -78,15 +97,19 @@ function formFERT(id = null, codigo = '', nombre = '', unidad_base = 'KG', preci
             </select>
         </div>
     `;
+    const campoCodigo = id
+    ? `<input id="codigo" class="swal2-input" style="width:100%; margin: 2 0; background-color: black; color: white;" placeholder="Código (8 dígitos)" value="${codigo}" readonly>`
+    : `<input id="codigo" class="swal2-input" style="width:100%; margin: 2 0; background-color: black; color: white;" placeholder="Código (8 dígitos)" value="${codigo}">`;
+
 
     Swal.fire({
         title: id ? 'Editar FERT' : 'Nuevo FERT',
         html:
-            `<input id="codigo" class="swal2-input" placeholder="Código (8 dígitos)" value="${codigo}">
-             <input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">
-             <input id="unidad_base" class="swal2-input" placeholder="Unidad Base (ej. KG)" value="${unidad_base}">
-             <input id="precio" type="number" class="swal2-input" placeholder="Precio" value="${precio}">
-             ${opcionesCentros}`,
+            `${campoCodigo}
+            <input id="nombre" style="width:100%; margin: 2 0" class="swal2-input" placeholder="Nombre" value="${nombre}">
+            <input id="unidad_base" style="width:100%; margin: 2 0" class="swal2-input" placeholder="Unidad Base (ej. KG)" value="${unidad_base}">
+            <input id="precio" style="width:100%; margin: 2 0" type="number" class="swal2-input" placeholder="Precio" value="${precio}">
+            ${opcionesCentros}`,
         didOpen: () => {
             if (centro_id) {
                 document.getElementById('centro_id').value = centro_id;
@@ -147,37 +170,63 @@ function eliminarFERT(id) {
         }
     });
 }
+    const fertCodigos = [
+        {% for fert in fert_list %}
+            "{{ fert.codigo }}"{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
 
 /* ------------------------
    👉 BOM CRUD 
 ------------------------ */
 function formBOM(fert_id, fert_name = '') {
-    let selectRoh = `
-        <div style="text-align:left; margin-bottom:10px;">
-            <label for="roh_id" style="font-weight:bold;">Seleccione ROH:</label>
-            <select id="roh_id" class="swal2-input" style="width:100%; display:block;">
-                <option value="">-- Seleccione --</option>
-                {% for roh in roh_list %}
-                    <option value="{{ roh.id }}">{{ roh.nombre }} ({{ roh.codigo }})</option>
-                {% endfor %}
-            </select>
-        </div>
+    let selectRohOptions = `
+        <option value="">-- Seleccione --</option>
+        {% for roh in roh_list %}
+            <option value="{{ roh.id }}">{{ roh.nombre }} ({{ roh.codigo }})</option>
+        {% endfor %}
+    `;
+
+    const tableHtml = `
+        <table class="table table-bordered" style="width:100%; margin-bottom:10px;">
+            <thead>
+                <tr>
+                    <th>Insumo (ROH)</th>
+                    <th>Cantidad</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody id="bom-rows">
+                ${newBOMRow(selectRohOptions)}
+            </tbody>
+        </table>
+        <button type="button" class="btn btn-sm btn-primary" onclick="addBOMRow()">+ Añadir fila</button>
     `;
 
     Swal.fire({
-        title: `Añadir Insumo a FERT: ${fert_name}`,
-        html:
-            `${selectRoh}
-             <input id="cantidad" type="number" class="swal2-input" placeholder="Cantidad">`,
+        title: `Añadir Insumos a FERT: ${fert_name}`,
+        html: tableHtml,
+        width: '700px',
+        focusConfirm: false,
         showCancelButton: true,
         confirmButtonText: 'Guardar',
         preConfirm: () => {
-            const roh_id = document.getElementById('roh_id').value;
-            const cantidad = document.getElementById('cantidad').value;
+            const rows = document.querySelectorAll('#bom-rows tr');
+            const datos = [];
 
-            if (!roh_id || !cantidad) {
-                Swal.showValidationMessage('Todos los campos son obligatorios.');
-                return false;
+            for (let row of rows) {
+                const select = row.querySelector('.roh-select');
+                const input = row.querySelector('.cantidad-input');
+
+                const roh_id = select.value;
+                const cantidad = input.value;
+
+                if (!roh_id || !cantidad || parseInt(cantidad) <= 0) {
+                    Swal.showValidationMessage('Todos los campos deben completarse y las cantidades ser mayores a 0.');
+                    return false;
+                }
+
+                datos.push({ roh_id, cantidad });
             }
 
             return fetch(`/admin/bom/guardar/`, {
@@ -186,7 +235,7 @@ function formBOM(fert_id, fert_name = '') {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token }}',
                 },
-                body: JSON.stringify({ fert_id, roh_id, cantidad }),
+                body: JSON.stringify({ fert_id, items: datos }),
             })
             .then(res => res.json())
             .then(data => {
@@ -195,6 +244,23 @@ function formBOM(fert_id, fert_name = '') {
             });
         }
     });
+
+    // helper para añadir fila inicial
+    function newBOMRow(options) {
+        return `
+            <tr>
+                <td><select class="form-select roh-select">${options}</select></td>
+                <td><input type="number" class="form-control cantidad-input" placeholder="Cantidad"></td>
+                <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()">X</button></td>
+            </tr>
+        `;
+    }
+
+    // función global para que Swal pueda acceder a ella
+    window.addBOMRow = function() {
+        const tableBody = document.getElementById('bom-rows');
+        tableBody.insertAdjacentHTML('beforeend', newBOMRow(selectRohOptions));
+    };
 }
 
 function eliminarBOM(fert_id, roh_id) {
@@ -221,5 +287,24 @@ function eliminarBOM(fert_id, roh_id) {
         }
     });
 }
+function filtrarFERTs() {
+    const sedeFiltro = document.getElementById('filtro-sede').value.toLowerCase();
+    const codigoFiltro = document.getElementById('filtro-codigo').value.toLowerCase();
+
+    document.querySelectorAll('.card.shadow-sm').forEach(card => {
+        const sedeTexto = card.querySelector('.card-text:nth-child(3)').textContent.toLowerCase();
+        const codigoTexto = card.querySelector('.card-text:nth-child(2)').textContent.toLowerCase();
+
+        const coincideSede = sedeTexto.includes(sedeFiltro);
+        const coincideCodigo = codigoTexto.includes(codigoFiltro);
+
+        if ((sedeFiltro === '' || coincideSede) && (codigoFiltro === '' || coincideCodigo)) {
+            card.closest('.col-md-6').style.display = '';
+        } else {
+            card.closest('.col-md-6').style.display = 'none';
+        }
+    });
+}
+
 </script>
 {% endblock %}

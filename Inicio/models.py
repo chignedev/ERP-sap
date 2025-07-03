@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from .managers import UsuarioManager  # 👈 nuevo
+from django.db.models import Max
 
 class Usuario(AbstractUser):
     ROLES = [
@@ -100,12 +101,24 @@ class BOM(models.Model):
 # ========================
 # 📌 Planificación
 # ========================
+class PlanVenta(models.Model):
+    fert = models.ForeignKey(FERT, on_delete=models.CASCADE, related_name='planes_venta')
+    cantidad_total = models.IntegerField()
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+class PlanVentaDetalle(models.Model):
+    plan = models.ForeignKey(PlanVenta, on_delete=models.CASCADE, related_name='detalles')
+    mes = models.IntegerField()
+    año = models.IntegerField()
+    cantidad = models.IntegerField()
+
 class PlanProduccion(models.Model):
-    fert = models.ForeignKey(FERT, on_delete=models.CASCADE, related_name='planes')
-    cantidad_fert = models.IntegerField()
+    venta = models.ForeignKey(PlanVenta, on_delete=models.CASCADE, related_name='planes_produccion')
+    fert = models.ForeignKey(FERT, on_delete=models.CASCADE)
+    cantidad_fert = models.IntegerField() 
     cantidad_fert_con_extra = models.IntegerField()
-    costo_insumos = models.DecimalField(max_digits=12, decimal_places=2)
-    costo_total_estimado = models.DecimalField(max_digits=12, decimal_places=2)
+    costo_insumos = models.DecimalField(max_digits=10, decimal_places=2)
+    costo_total_estimado = models.DecimalField(max_digits=10, decimal_places=2)
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
 class PlanProduccionDetalle(models.Model):
@@ -113,12 +126,17 @@ class PlanProduccionDetalle(models.Model):
     mes = models.IntegerField()
     año = models.IntegerField()
     cantidad_en_mes = models.IntegerField()
+    
+class PlanCompra(models.Model):
+    produccion = models.ForeignKey(PlanProduccion, on_delete=models.CASCADE, related_name='planes_compra')
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
 
-class PlanProduccionInsumo(models.Model):
-    plan = models.ForeignKey(PlanProduccion, on_delete=models.CASCADE, related_name='insumos')
+class PlanCompraItem(models.Model):
+    plan = models.ForeignKey(PlanCompra, on_delete=models.CASCADE, related_name='items')
     roh = models.ForeignKey(ROH, on_delete=models.CASCADE)
-    cantidad_requerida = models.IntegerField()
-    costo_total = models.DecimalField(max_digits=12, decimal_places=2)
+    cantidad_comprar = models.IntegerField()
+    costo_total = models.DecimalField(max_digits=10, decimal_places=2)
+
 
 
 class SOLPED(models.Model):
@@ -154,9 +172,9 @@ class SOLPEDItem(models.Model):
     costo_estimado = models.DecimalField(max_digits=12, decimal_places=2)
     observacion = models.TextField(blank=True, null=True)
 
-    # 🔑 Clave: referencia al insumo original del Plan de Producción
+    # 🔑 Clave: referencia al insumo original del Plan de Ventas
     plan_insumo = models.ForeignKey(
-        PlanProduccionInsumo,
+        PlanCompraItem,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
@@ -165,7 +183,6 @@ class SOLPEDItem(models.Model):
 
     def __str__(self):
         return f"{self.material.nombre} x {self.cantidad} {self.unidad}"
-
 
 
 # ========================

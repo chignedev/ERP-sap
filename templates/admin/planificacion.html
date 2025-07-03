@@ -1,11 +1,24 @@
 {% extends "base.html" %}
-
 {% block content %}
+
 <div class="container mt-4">
-  <h2 class="mb-4">Planes de Producción</h2>
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Planes de Ventas</h2>
+
+    <div class="d-flex gap-2">
+      <select id="filtroNombre" class="form-control form-control-sm">
+        <option value="">Todos los FERTs</option>
+        {% for f in fert_list %}
+          <option value="{{ f.nombre }}">{{ f.nombre }}</option>
+        {% endfor %}
+      </select>
+
+      <input type="text" id="filtroId" class="form-control form-control-sm" placeholder="Filtrar por ID">
+    </div>
+  </div>
 
   {% if fert_list %}
-    <button class="btn btn-success mb-4" onclick="formPlan()">+ Nuevo Plan de Producción</button>
+    <button class="btn btn-success mb-4" onclick="formPlan()">+ Nuevo Plan de Ventas</button>
   {% else %}
     <p class="text-muted">Primero registre FERT.</p>
   {% endif %}
@@ -15,26 +28,31 @@
     <div class="col-md-6 mb-4">
       <div class="card shadow-sm h-100">
         <div class="card-body">
-          <h5 class="card-title">{{ plan.fert.nombre }}</h5>
-          <p><strong>Código:</strong> {{ plan.fert.codigo }}</p>
-          <p><strong>Cantidad Planeada:</strong> {{ plan.cantidad_fert }}</p>
-          <p><strong>Producción (10% extra):</strong> {{ plan.cantidad_fert_con_extra }}</p>
-          <p><strong>Costo Insumos:</strong> S/. {{ plan.costo_insumos }}</p>
+          <div class="d-flex justify-content-start gap-2 mb-2">
+            <button class="btn btn-warning btn-sm"
+              onclick="formPlan({{ plan.id }}, {{ plan.fert.id }}, {{ plan.cantidad_total }}, {{ plan.detalles_serializados|safe }})">
+              ✏️ Editar
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="eliminarPlan({{ plan.id }})">🗑 Eliminar</button>
+          </div>
 
-          <h6 class="mt-3">📅 Distribución:</h6>
-          <table class="table table-sm table-bordered mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <h5 class="card-title mb-0">{{ plan.fert.nombre }}</h5>
+            <span class="badge bg-primary">Código: {{ plan.fert.codigo }}</span>
+          </div>
+
+          <p class="mb-2"><strong>Total Ventas:</strong> {{ plan.cantidad_total }}</p>
+
+          <h6 class="mt-3">📅 Distribución por Mes</h6>
+          <table class="table table-sm table-bordered">
             <thead class="table-light">
-              <tr>
-                <th>Mes</th>
-                <th>Año</th>
-                <th>Cantidad</th>
-              </tr>
+              <tr><th>Mes</th><th>Año</th><th>Cantidad</th></tr>
             </thead>
             <tbody>
               {% for det in plan.detalles.all %}
               <tr>
                 <td>
-                  {% with det.mes as m %}
+                  {% with m=det.mes %}
                     {% if m == 1 %}Enero{% elif m == 2 %}Febrero{% elif m == 3 %}Marzo
                     {% elif m == 4 %}Abril{% elif m == 5 %}Mayo{% elif m == 6 %}Junio
                     {% elif m == 7 %}Julio{% elif m == 8 %}Agosto{% elif m == 9 %}Septiembre
@@ -43,41 +61,60 @@
                   {% endwith %}
                 </td>
                 <td>{{ det.año }}</td>
-                <td>{{ det.cantidad_en_mes }}</td>
+                <td>{{ det.cantidad }}</td>
               </tr>
               {% empty %}
-              <tr><td colspan="3" class="text-muted text-center">Sin distribución.</td></tr>
+              <tr><td colspan="3" class="text-center text-muted">Sin distribución registrada.</td></tr>
               {% endfor %}
             </tbody>
           </table>
 
-          <h6>🧾 Insumos:</h6>
-          <table class="table table-sm table-striped">
+          {% with prod=plan.planes_produccion.first %}
+          {% if prod %}
+          <h6 class="mt-4">📈 Plan de Producción (+10%)</h6>
+          <table class="table table-sm table-bordered">
             <thead class="table-light">
-              <tr>
-                <th>Insumo</th>
-                <th>Cantidad</th>
-                <th>Unidad</th>
-                <th>Costo Total (S/.)</th>
-              </tr>
+              <tr><th>Mes</th><th>Año</th><th>Producción</th></tr>
             </thead>
             <tbody>
-              {% for ins in plan.insumos.all %}
+              {% for pd in prod.detalles.all %}
               <tr>
-                <td>{{ ins.roh.nombre }}</td>
-                <td>{{ ins.cantidad_requerida }}</td>
-                <td>{{ ins.roh.unidad_base }}</td>
-                <td>S/. {{ ins.costo_total }}</td>
+                <td>
+                  {% with m=pd.mes %}
+                    {% if m == 1 %}Enero{% elif m == 2 %}Febrero{% elif m == 3 %}Marzo
+                    {% elif m == 4 %}Abril{% elif m == 5 %}Mayo{% elif m == 6 %}Junio
+                    {% elif m == 7 %}Julio{% elif m == 8 %}Agosto{% elif m == 9 %}Septiembre
+                    {% elif m == 10 %}Octubre{% elif m == 11 %}Noviembre{% elif m == 12 %}Diciembre
+                    {% else %}{{ m }}{% endif %}
+                  {% endwith %}
+                </td>
+                <td>{{ pd.año }}</td>
+                <td>{{ pd.cantidad_en_mes }}</td>
               </tr>
-              {% empty %}
-              <tr><td colspan="4" class="text-muted text-center">Sin insumos calculados.</td></tr>
               {% endfor %}
             </tbody>
           </table>
+          <p class="text-end"><strong>Total producción:</strong> {{ prod.cantidad_fert_con_extra }}</p>
 
-          <div class="text-end">
-            <button class="btn btn-danger btn-sm" onclick="eliminarPlan({{ plan.id }})">Eliminar</button>
-          </div>
+          <h6 class="mt-4">📦 Insumos a Comprar</h6>
+          <table class="table table-sm table-bordered">
+            <thead class="table-light">
+              <tr><th>Insumo</th><th>Cantidad</th><th>Unidad</th><th>Costo (S/.)</th></tr>
+            </thead>
+            <tbody>
+              {% for ins in prod.planes_compra.first.items.all %}
+              <tr>
+                <td class="text-start">{{ ins.roh.nombre }}</td>
+                <td>{{ ins.cantidad_comprar|floatformat:2 }}</td>
+                <td>{{ ins.roh.unidad_base }}</td>
+                <td>S/. {{ ins.costo_total|floatformat:2 }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="text-end"><strong>Total estimado:</strong> S/. {{ prod.costo_total_estimado|floatformat:2 }}</p>
+          {% endif %}
+          {% endwith %}
         </div>
       </div>
     </div>
@@ -85,178 +122,214 @@
   </div>
 </div>
 
-<!-- ✅ JSON SEGURO -->
 {{ fert_list|json_script:"ferts-data" }}
 
+
 <script>
-// ⚡ Cargar lista de FERTS con BOM desde JSON seguro
 const ferts = JSON.parse(document.getElementById('ferts-data').textContent);
 
-// 👉 Abrir modal para nuevo plan de producción
-function formPlan() {
-  let options = `<option value="">-- Seleccione --</option>`;
-  ferts.forEach(f => options += `<option value="${f.id}">${f.nombre}</option>`);
+function formPlan(id = null, fert_id = '', cantidad_total = '', detalles = []) {
+  let opciones = `<option value="">-- Seleccione --</option>`;
+  ferts.forEach(f => {
+    const selected = f.id == fert_id ? 'selected' : '';
+    opciones += `<option value="${f.id}" ${selected}>${f.nombre}</option>`;
+  });
 
   Swal.fire({
-    title: 'Nuevo Plan de Producción',
+    title: id ? 'Editar Plan de Ventas' : 'Nuevo Plan de Ventas',
     html: `
-      <div style="text-align:left">
-        <label>FERT:</label>
-        <select id="fert_id" class="form-control mb-2">${options}</select>
-
-        <label>Cantidad Total:</label>
-        <input id="cantidad_fert" type="number" class="form-control mb-2" placeholder="Cantidad total" oninput="updateInsumos()">
-
-        <label>Distribución por Mes:</label>
-        <table class="table table-sm" id="tablaDistribucion">
-          <thead><tr><th>Mes</th><th>Año</th><th>Cantidad</th><th></th></tr></thead>
-          <tbody></tbody>
-        </table>
-        <button type="button" class="btn btn-secondary btn-sm mb-3" onclick="addFila()">+ Fila</button>
-
-        <label>Insumos Calculados (+10%):</label>
-        <div id="insumosPreview"></div>
+      <div class="row mb-2">
+        <div class="col-md-6 text-start">
+          <label class="text-start">FERT:</label>
+          <select id="fert_id" class="form-control" onchange="calcularTodo()">${opciones}</select>
+        </div>
+        <div class="col-md-6 text-start">
+          <label class="text-start">Cantidad Total a Vender:</label>
+          <input type="number" id="cantidad_total" class="form-control" placeholder="Cantidad" value="${cantidad_total}" oninput="calcularTodo()">
+        </div>
       </div>
+
+      <h5 class="text-start">Distribución por Mes:</h5>
+      <table class="table table-sm" id="tablaDistribucion">
+        <thead><tr><th>Mes</th><th>Año</th><th>Cantidad</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button class="btn btn-primary btn-sm mb-2" onclick="addFila()">Añadir Fila</button>
+      <div id="mensajeDistribucion" class="text-danger mb-3" style="display:none;"></div>
+
+      <hr>
+      <h5 class="text-start">📈 Plan de Producción (+10%)</h5>
+      <div id="previewProduccion" class="mb-3 text-muted">Se calculará automáticamente...</div>
+
+      <h5 class="text-start">📦 Insumos a Comprar</h5>
+      <div id="previewInsumos" class="text-muted">Se calcularán automáticamente...</div>
     `,
-    customClass: { popup: 'swal-wide' },
-    width: '70%',
+    width: '80%',
     showCancelButton: true,
     confirmButtonText: 'Guardar Plan',
+    didOpen: () => {
+      if (Array.isArray(detalles) && detalles.length > 0) {
+        detalles.forEach(d => addFila(d));
+      }
+      calcularTodo();
+    },
     preConfirm: () => {
       const fert_id = document.getElementById('fert_id').value;
-      const cantidad_fert = parseInt(document.getElementById('cantidad_fert').value);  // 👉 ENTERO
-      const insumos = window._insumosPreview || [];
-      const total_costo_insumos = window._totalCosto || 0;
-
+      const cantidad_total = parseFloat(document.getElementById('cantidad_total').value);
       const distribucion = [];
+      let sumaDistribucion = 0;
+
       document.querySelectorAll('#tablaDistribucion tbody tr').forEach(row => {
+        const cantidad = parseFloat(row.querySelector('.cantidad').value);
+        sumaDistribucion += cantidad;
         distribucion.push({
-          mes: parseInt(row.querySelector('.mes').value),   // 👉 ENTERO
-          año: parseInt(row.querySelector('.año').value),   // 👉 ENTERO
-          cantidad: parseInt(row.querySelector('.cantidad').value)  // 👉 ENTERO
+          mes: row.querySelector('.mes').value,
+          año: row.querySelector('.año').value,
+          cantidad: cantidad
         });
       });
 
-      if (!fert_id || !cantidad_fert || insumos.length === 0) {
-        Swal.showValidationMessage('Complete FERT, cantidad y revise los insumos calculados.');
+      if (!fert_id || !cantidad_total || distribucion.length === 0) {
+        Swal.showValidationMessage('Complete todos los campos');
         return false;
       }
 
-      if (distribucion.length === 0) {
-        Swal.showValidationMessage('Agregue al menos una fila de distribución.');
+      if (Math.round(sumaDistribucion) !== Math.round(cantidad_total)) {
+        Swal.showValidationMessage(`La suma de la distribución mensual (${sumaDistribucion}) debe ser igual a la cantidad total (${cantidad_total}).`);
         return false;
       }
 
-      return fetch(`/admin/planificacion/guardar/`, {
+      const payload = { fert_id, cantidad_total, distribucion };
+      if (id) payload.id = id;
+
+      return fetch('/admin/planificacion/guardar/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
-        body: JSON.stringify({
-          fert_id,
-          cantidad_fert,
-          cantidad_fert_con_extra: cantidad_fert * 1.10,
-          costo_insumos: total_costo_insumos,
-          costo_total_estimado: total_costo_insumos,
-          distribucion,
-          insumos
-        })
+        body: JSON.stringify(payload)
       }).then(r => r.json()).then(data => {
         if (data.ok) location.reload();
         else Swal.showValidationMessage(data.error);
       });
     }
   });
-
-  // Inicializar variables globales
-  window._insumosPreview = [];
-  window._totalCosto = 0;
 }
 
-// 👉 Calcular insumos en tiempo real cuando cambia cantidad total
-function updateInsumos() {
-  const fert_id = document.getElementById('fert_id').value;
-  const cantidad_fert = parseInt(document.getElementById('cantidad_fert').value); // 👉 ENTERO
-  const preview = document.getElementById('insumosPreview');
-
-  if (!fert_id || !cantidad_fert) {
-    preview.innerHTML = `<p class="text-muted">Seleccione FERT y cantidad para calcular.</p>`;
-    return;
-  }
-
-  const fert = ferts.find(f => f.id == fert_id);
-  const cantidad_fert_con_extra = cantidad_fert * 1.10;
-  let insumos = [];
-  let total_costo_insumos = 0;
-
-  let tabla = `<table class="table table-bordered"><thead><tr><th>Insumo</th><th>Cantidad</th><th>Unidad</th><th>Costo Total (S/.)</th></tr></thead><tbody>`;
-
-  fert.bom.forEach(b => {
-    const cantidad = b.cantidad_por_unidad * cantidad_fert_con_extra;
-    const costo = cantidad * b.precio;
-    insumos.push({
-      roh_id: b.roh_id,
-      roh_nombre: b.roh_nombre,
-      cantidad_requerida: cantidad,
-      costo_total: costo
-    });
-    total_costo_insumos += costo;
-
-    tabla += `<tr>
-      <td>${b.roh_nombre}</td>
-      <td>${cantidad.toFixed(2)}</td>
-      <td>${b.unidad_base}</td>
-      <td>S/. ${costo.toFixed(2)}</td>
-    </tr>`;
-  });
-
-  tabla += `</tbody></table>`;
-  tabla += `<p><strong>Costo Total Insumos:</strong> S/. ${total_costo_insumos.toFixed(2)}</p>`;
-
-  preview.innerHTML = tabla;
-
-  window._insumosPreview = insumos;
-  window._totalCosto = total_costo_insumos;
-}
-
-// 👉 Añadir fila de distribución con select de mes
-function addFila() {
-  const meses = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-  ];
-  let options = '<option value="">-- Mes --</option>';
-  meses.forEach((m, idx) => {
-    options += `<option value="${idx+1}">${m}</option>`;
+window.addFila = (data = {}) => {
+  const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+  let mesOpts = '<option value="">--</option>';
+  meses.forEach((m, i) => {
+    const selected = data.mes == (i + 1) ? 'selected' : '';
+    mesOpts += `<option value="${i + 1}" ${selected}>${m}</option>`;
   });
 
   const fila = `<tr>
-    <td><select class="form-control form-control-sm mes">${options}</select></td>
-    <td><input type="number" class="form-control form-control-sm año" placeholder="Año"></td>
-    <td><input type="number" class="form-control form-control-sm cantidad" placeholder="Cantidad"></td>
-    <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove()">X</button></td>
+    <td><select class="form-control form-control-sm mes">${mesOpts}</select></td>
+    <td><input class="form-control form-control-sm año" type="number" value="${data.año || 2025}" onchange="calcularTodo()"></td>
+    <td><input class="form-control form-control-sm cantidad" type="number" value="${data.cantidad || ''}" oninput="calcularTodo()"></td>
+    <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove(); calcularTodo();">X</button></td>
   </tr>`;
   document.querySelector('#tablaDistribucion tbody').insertAdjacentHTML('beforeend', fila);
-}
+};
 
-// 👉 Eliminar plan existente
-function eliminarPlan(id) {
+window.calcularTodo = () => {
+  const fert_id = document.getElementById('fert_id').value;
+  const cantidad_total = parseFloat(document.getElementById('cantidad_total').value) || 0;
+  const previewProduccion = document.getElementById('previewProduccion');
+  const previewInsumos = document.getElementById('previewInsumos');
+  const mensajeDistribucion = document.getElementById('mensajeDistribucion');
+
+  const distribucion = [];
+  let suma = 0;
+
+  document.querySelectorAll('#tablaDistribucion tbody tr').forEach(row => {
+    const cantidad = parseFloat(row.querySelector('.cantidad').value) || 0;
+    suma += cantidad;
+    distribucion.push({
+      mes: parseInt(row.querySelector('.mes').value),
+      año: parseInt(row.querySelector('.año').value),
+      cantidad: cantidad
+    });
+  });
+
+  if (suma > cantidad_total) {
+    mensajeDistribucion.style.display = 'block';
+    mensajeDistribucion.innerText = `⚠️ La suma de las cantidades (${suma}) excede el total (${cantidad_total}).`;
+  } else {
+    mensajeDistribucion.style.display = 'none';
+  }
+
+  const prod_total = cantidad_total * 1.10;
+  let tablaProd = `<table class="table table-sm"><thead><tr><th>Mes</th><th>Año</th><th>Producción</th></tr></thead><tbody>`;
+  distribucion.forEach(d => {
+    const prod_mes = Math.round(d.cantidad * 1.10);
+    const nombreMes = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"][d.mes - 1];
+    tablaProd += `<tr><td>${nombreMes}</td><td>${d.año}</td><td>${prod_mes}</td></tr>`;
+  });
+  tablaProd += `</tbody></table><p class="text-end"><strong>Total producción:</strong> ${prod_total.toFixed(2)}</p>`;
+  previewProduccion.innerHTML = tablaProd;
+
+  const fert = ferts.find(f => f.id == fert_id);
+  let totalCosto = 0;
+  let tablaInsumos = `<table class="table table-sm"><thead><tr><th>Insumo</th><th>Cantidad</th><th>Unidad</th><th>Costo (S/.)</th></tr></thead><tbody>`;
+  if (fert) {
+    fert.bom.forEach(i => {
+      const cantidad = prod_total * i.cantidad_por_unidad;
+      const costo = cantidad * i.precio;
+      totalCosto += costo;
+      tablaInsumos += `<tr><td class="text-start">${i.roh_nombre}</td><td>${cantidad.toFixed(2)}</td><td>${i.unidad_base}</td><td>S/. ${costo.toFixed(2)}</td></tr>`;
+    });
+  }
+  tablaInsumos += `</tbody></table><p class="text-end"><strong>Total estimado:</strong> S/. ${totalCosto.toFixed(2)}</p>`;
+  previewInsumos.innerHTML = tablaInsumos;
+};
+
+window.eliminarPlan = (id) => {
   Swal.fire({
-    title: '¿Eliminar plan?',
+    title: '¿Eliminar Plan?',
+    text: 'Esta acción no se puede deshacer.',
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Sí, eliminar'
-  }).then(r => {
-    if (r.isConfirmed) {
-      fetch(`/admin/planificacion/eliminar/`, {
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      fetch('/admin/planificacion/eliminar/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
         body: JSON.stringify({ id })
-      }).then(res => res.json()).then(data => {
-        if (data.ok) location.reload();
-        else Swal.fire('Error', data.error, 'error');
+      }).then(r => r.json()).then(data => {
+        if (data.ok) {
+          Swal.fire('Eliminado', 'El plan fue eliminado correctamente.', 'success').then(() => location.reload());
+        } else {
+          Swal.fire('Error', 'No se pudo eliminar el plan.', 'error');
+        }
       });
     }
   });
+};
+
+
+</script>
+<script>
+document.getElementById('filtroNombre').addEventListener('change', filtrarPlanes);
+document.getElementById('filtroId').addEventListener('input', filtrarPlanes);
+
+function filtrarPlanes() {
+  const nombreFiltro = document.getElementById('filtroNombre').value.toLowerCase();
+  const idFiltro = document.getElementById('filtroId').value.trim();
+
+  document.querySelectorAll('.col-md-6.mb-4').forEach(card => {
+    const nombre = card.querySelector('.card-title').textContent.toLowerCase();
+    const idTexto = card.querySelector('.badge').textContent.split(':')[1].trim();
+
+    const coincideNombre = nombreFiltro === '' || nombre === nombreFiltro;
+    const coincideId = idFiltro === '' || idTexto.includes(idFiltro);
+
+    card.style.display = (coincideNombre && coincideId) ? '' : 'none';
+  });
 }
 </script>
+
 
 {% endblock %}

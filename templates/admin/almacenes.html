@@ -50,43 +50,55 @@ function formAlmacen(id = null, nombre = '', descripcion = '', sede_id = '') {
     `;
 
     Swal.fire({
-        title: id ? 'Editar Almacén' : 'Nuevo Almacén',
-        html:
-            `<input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">
-             <input id="descripcion" class="swal2-input" placeholder="Descripción" value="${descripcion}">
-             ${opcionesSedes}`,
-        didOpen: () => {
-            if (sede_id) {
-                document.getElementById('sede_id').value = sede_id;
-            }
-        },
-        showCancelButton: true,
-        confirmButtonText: 'Guardar',
-        preConfirm: () => {
-            const nombre = document.getElementById('nombre').value.trim();
-            const descripcion = document.getElementById('descripcion').value.trim();
-            const sede_id = document.getElementById('sede_id').value;
-
-            if (!nombre || !sede_id) {
-                Swal.showValidationMessage('Nombre y Sede son obligatorios');
-                return false;
-            }
-
-            return fetch(`/admin/almacenes/guardar/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token }}',
-                },
-                body: JSON.stringify({ id, nombre, descripcion, sede_id }),
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.ok) location.reload();
-                else Swal.showValidationMessage(data.error);
-            });
+    title: id ? 'Editar Almacén' : 'Nuevo Almacén',
+    width: '650px', // más amplio
+    html:
+        `<div style="display: flex; flex-direction: column; gap: 15px;">
+            <input id="nombre" class="swal2-input" style="width: 100%; font-size: 1rem; margin: 0;" placeholder="Nombre" value="${nombre}">
+            <input id="descripcion" class="swal2-input" style="width: 100%; font-size: 1rem; margin: 0;" placeholder="Descripción" value="${descripcion}">
+            <div style="text-align:left;">
+                <label for="sede_id" style="font-weight:bold; margin-left:1px;">Seleccione Sede:</label>
+                <select id="sede_id" class="swal2-input" style="width: 100%; font-size: 1rem;">
+                    <option value="">-- Seleccione una sede --</option>
+                    {% for sede in sedes %}
+                        <option value="{{ sede.id }}">{{ sede.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>`,
+    didOpen: () => {
+        if (sede_id) {
+            document.getElementById('sede_id').value = sede_id;
         }
-    });
+    },
+    showCancelButton: true,
+    confirmButtonText: 'Guardar',
+    preConfirm: () => {
+        const nombre = document.getElementById('nombre').value.trim();
+        const descripcion = document.getElementById('descripcion').value.trim();
+        const sede_id = document.getElementById('sede_id').value;
+
+        if (!nombre || !sede_id) {
+            Swal.showValidationMessage('Nombre y Sede son obligatorios');
+            return false;
+        }
+
+        return fetch(`/admin/almacenes/guardar/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}',
+            },
+            body: JSON.stringify({ id, nombre, descripcion, sede_id }),
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok) location.reload();
+            else Swal.showValidationMessage(data.error);
+        });
+    }
+});
+
 }
 
 function eliminarAlmacen(id) {

@@ -2,7 +2,7 @@ from django.shortcuts import render, get_object_or_404
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 import json
-
+from django.db.models import Max
 from Inicio.models import ROH, FERT, BOM, Sede, Almacen
 
 # ================================
@@ -157,24 +157,25 @@ def guardar_bom(request):
     if request.method == 'POST':
         data = json.loads(request.body)
         fert_id = data.get('fert_id')
-        roh_id = data.get('roh_id')
-        cantidad = data.get('cantidad')
-
-        if not fert_id or not roh_id or not cantidad:
-            return JsonResponse({'ok': False, 'error': 'Todos los campos son obligatorios.'})
+        items = data.get('items', [])
 
         fert = get_object_or_404(FERT, id=fert_id)
-        roh = get_object_or_404(ROH, id=roh_id)
 
-        # Crear o actualizar la relación BOM
-        bom_obj, created = BOM.objects.get_or_create(
-            fert=fert,
-            roh=roh,
-            defaults={'cantidad': cantidad}
-        )
-        if not created:
-            bom_obj.cantidad = cantidad
-            bom_obj.save()
+        for item in items:
+            roh_id = item.get('roh_id')
+            cantidad = item.get('cantidad')
+            if not roh_id or not cantidad:
+                continue
+            roh = get_object_or_404(ROH, id=roh_id)
+
+            bom_obj, created = BOM.objects.get_or_create(
+                fert=fert,
+                roh=roh,
+                defaults={'cantidad': cantidad}
+            )
+            if not created:
+                bom_obj.cantidad = cantidad
+                bom_obj.save()
 
         return JsonResponse({'ok': True})
 

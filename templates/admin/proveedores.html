@@ -42,12 +42,12 @@ function formProveedor(id = null, nombre = '', ruc = '', direccion = '', telefon
   Swal.fire({
     title: id ? 'Editar Proveedor' : 'Nuevo Proveedor',
     html: `
-      <input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">
-      <input id="ruc" class="swal2-input" placeholder="RUC" value="${ruc}">
-      <input id="direccion" class="swal2-input" placeholder="Dirección" value="${direccion}">
-      <input id="telefono" class="swal2-input" placeholder="Teléfono" value="${telefono}">
-      <input id="email" class="swal2-input" placeholder="Email" value="${email}">
-      <input id="contacto" class="swal2-input" placeholder="Contacto" value="${contacto}">
+      <input style="width:100%; margin: 2 0" id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">
+      <input style="width:100%; margin: 2 0" id="ruc" class="swal2-input" placeholder="RUC" value="${ruc}">
+      <input style="width:100%; margin: 2 0" id="direccion" class="swal2-input" placeholder="Dirección" value="${direccion}">
+      <input style="width:100%; margin: 2 0" id="telefono" class="swal2-input" placeholder="Teléfono" value="${telefono}">
+      <input style="width:100%; margin: 2 0" id="email" class="swal2-input" placeholder="Email" value="${email}">
+      <input style="width:100%; margin: 2 0" id="contacto" class="swal2-input" placeholder="Contacto" value="${contacto}">
     `,
     showCancelButton: true,
     confirmButtonText: 'Guardar',

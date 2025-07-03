@@ -11,10 +11,9 @@
     <div class="col-md-6 mb-4">
       <div class="card shadow-sm">
         <div class="card-body">
-          <h5>Entrada #{{ entrada.id }} {% if entrada.orden_compra %}- OC #{{ entrada.orden_compra.id }}{% endif %}</h5>
+          <h5>Entrada #{{ entrada.id }} {% if entrada.orden_compra %}- Orden de Compra #{{ entrada.orden_compra.id }}{% endif %}</h5>
           <p><strong>Almacén:</strong> {{ entrada.almacen.nombre }}</p>
-          <p><strong>Comentario:</strong> {{ entrada.comentario|default:"Sin comentario" }}</p>
-          <h6>Items:</h6>
+          <h6>📦Materiales (ROH):</h6>
           <table class="table table-sm table-striped">
             <thead><tr><th>Material</th><th>Cantidad</th></tr></thead>
             <tbody>
@@ -44,16 +43,16 @@ const almacenes = JSON.parse(document.getElementById('almacenes-data').textConte
 
 function formEntrada() {
   let opcionesAlmacen = almacenes.map(a => `<option value="${a.id}">${a.nombre}</option>`).join('');
-  let opcionesOC = `<option value="">-- Opcional: Orden de Compra --</option>`;
-  ordenes.forEach(o => { opcionesOC += `<option value="${o.id}">OC #${o.id}</option>`; });
+  let opcionesOC = `<option value="">-- Orden de Compra --</option>`;
+  ordenes.forEach(o => { opcionesOC += `<option value="${o.id}">Orden de Compra #${o.id}</option>`; });
 
   Swal.fire({
     title: 'Nueva Entrada',
     html: `
-      <label>Almacén:</label>
+      <h5 class="text-start">Almacén:</h5>
       <select id="almacen_id" class="form-control mb-2">${opcionesAlmacen}</select>
 
-      <label>Orden de Compra:</label>
+      <h5 class="text-start">Orden de Compra:</h5>
       <select id="oc_id" class="form-control mb-2" onchange="loadItemsEntrada()">${opcionesOC}</select>
 
       <div id="itemsContainer"></div>
