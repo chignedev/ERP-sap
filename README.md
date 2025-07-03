@@ -62,15 +62,16 @@ Cada entrada del menú se genera con iconos (FontAwesome) y `reverse()` de Djang
 
 ## 🗂️ Estructura destacada
 
+```bash
 /Admin
 ├── templates/admin/
-│ ├── movimientos.html
-│ ├── entradas.html
-│ └── ...
+│   ├── movimientos.html         # Vista de transferencias de stock
+│   ├── entradas.html            # Vista de entradas de materiales
+│   └── ...                      # Otras plantillas del módulo
 ├── views/
-│ └── almacen.py
-├── context_processors.py 👈 Genera menú dinámico
-└── urls.py
+│   └── almacen.py               # Lógica de stock, movimientos y entradas
+├── context_processors.py        # 👈 Genera menú lateral dinámico
+└── urls.py                      # Rutas internas del módulo Admin
 
 ---
 
