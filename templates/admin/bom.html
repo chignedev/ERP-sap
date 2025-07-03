@@ -29,7 +29,7 @@
                     <p class="card-text"><strong>Código:</strong> {{ fert.codigo }}</p>
                     <p class="card-text"><strong>Sede:</strong> {{ fert.centro.nombre }}</p>
                     <p class="card-text"><strong>Unidad Base:</strong> {{ fert.unidad_base }}</p>
-                    <p class="card-text"><strong>Precio:</strong> S/. {{ fert.precio }}</p>
+                    <p class="card-text"><strong>Cantidad:</strong> {{ fert.precio }}</p>
 
                     <!-- Botones de acción -->
                     <div class="mb-3 d-flex justify-content-end flex-wrap">
@@ -108,7 +108,7 @@ function formFERT(id = null, codigo = '', nombre = '', unidad_base = 'KG', preci
             `${campoCodigo}
             <input id="nombre" style="width:100%; margin: 2 0" class="swal2-input" placeholder="Nombre" value="${nombre}">
             <input id="unidad_base" style="width:100%; margin: 2 0" class="swal2-input" placeholder="Unidad Base (ej. KG)" value="${unidad_base}">
-            <input id="precio" style="width:100%; margin: 2 0" type="number" class="swal2-input" placeholder="Precio" value="${precio}">
+            <input id="precio" style="width:100%; margin: 2 0" type="number" class="swal2-input" placeholder="Cantidad" value="${precio}">
             ${opcionesCentros}`,
         didOpen: () => {
             if (centro_id) {
