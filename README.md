@@ -1,83 +1,95 @@
-# 📦 Módulo de Transferencias de Stock
+# 🛠️ Sistema ERP – Módulo de Administración
 
-Este módulo forma parte del sistema ERP desarrollado en Django. Permite registrar, visualizar y controlar transferencias internas de materiales entre almacenes de manera segura y validada.
-
----
-
-## 🚀 Funcionalidades principales
-
-- 🔍 Visualizar el **stock actual** por almacén y material.
-- 🔁 Registrar **movimientos de stock** entre almacenes.
-- ✅ Validación automática del stock disponible.
-- 📋 Historial de movimientos recientes por almacén.
+Este módulo administra y conecta los procesos clave de gestión logística, planificación y compras en una arquitectura ERP construida con Django. Incluye operaciones desde la solicitud de materiales (SOLPED), hasta las órdenes de compra y control de almacén.
 
 ---
 
-## 🧱 Estructura general
+## 🧭 Navegación principal
 
-### Modelos utilizados
+La interfaz de administración incluye un menú organizado por módulos, generado dinámicamente con `context_processors.py`.
 
-- `Almacen`: almacenes físicos (ej. Lima, Trujillo).
-- `ROH`: materiales tipo materia prima.
-- `MovimientoStock`: entradas y salidas con motivo y cantidad.
-  
----
+### Menú de navegación
 
-## 🖥️ Interfaz (`movimientos.html`)
+| Módulo         | Submódulos                                                  |
+|----------------|-------------------------------------------------------------|
+| **Centros**     | - Sedes<br>- Almacenes                                     |
+| **Materiales**  | - Materiales (ROH)<br>- BOM (FERT)                         |
+| **Planificación** | - Planes de Ventas<br>- SOLPED                          |
+| **Aprobación**  | - Revisar SOLPED                                           |
+| **Compras**     | - Proveedores<br>- Órdenes de Compra                      |
+| **Almacén**     | - Entradas de Materiales<br>- Movimientos de Stock        |
 
-- Tarjetas por almacén mostrando:
-  - Stock actual por ROH
-  - Últimos movimientos registrados
-- Formulario SweetAlert para nueva transferencia con:
-  - Almacén origen/destino
-  - Material (filtrado según almacén)
-  - Cantidad (limitada al stock real)
-  - Motivo (opcional)
+Cada entrada del menú se genera con iconos (FontAwesome) y `reverse()` de Django para enlazar a la vista correspondiente.
 
 ---
 
-## 🧪 Validaciones incorporadas
+## 🔍 Funcionalidades principales por módulo
 
-- ❌ No se permite transferir entre el mismo almacén.
-- ❌ No se puede transferir más del stock disponible.
-- ✅ Los materiales listados dependen del almacén origen.
-- ✅ Visualización del stock disponible antes de confirmar.
+### 📍 Centros
+- Registrar sedes (ciudades, países).
+- Gestionar almacenes físicos y su capacidad.
+
+### 📦 Materiales
+- Crear y editar materiales tipo ROH.
+- Configurar estructuras BOM (FERT + componentes).
+
+### 📊 Planificación
+- Crear planes de venta mensuales.
+- Generar planes de producción y SOLPED automáticos.
+
+### ✅ Aprobación
+- Verificar y aprobar solicitudes de compra (SOLPED).
+
+### 🛒 Compras
+- Registrar proveedores con RUC y contacto.
+- Generar órdenes de compra basadas en SOLPEDs aprobadas.
+
+### 🏭 Almacén
+- Registrar entradas por OC.
+- Transferir stock entre almacenes.
+- Ver y controlar movimientos (entradas/salidas).
 
 ---
 
-## 📁 Archivos relevantes
+## 🧩 Componentes técnicos
 
-- `views/almacen.py`: lógica de la vista `movimientos()`.
-- `templates/admin/movimientos.html`: interfaz principal.
-- `MovimientoStock`: modelo de control de entradas/salidas.
-- `json_script`: transmisión de datos seguros al frontend.
-
----
-
-## 📈 Mejoras posibles
-
-- [ ] Exportación de reportes en PDF o Excel.
-- [ ] Filtros por fecha, material o motivo.
-- [ ] Historial detallado por material.
-- [ ] Reversión de transferencias o ajustes manuales.
+- **Backend**: Django 4+ (con `reverse`, `select_related`, `context_processors`)
+- **Frontend**: Bootstrap 5 + FontAwesome + SweetAlert2
+- **Protección**: Validaciones CSRF, filtros de usuario autenticado
+- **Base de datos**: PostgreSQL o SQLite
 
 ---
 
-## ⚙️ Requisitos técnicos
+## 🗂️ Estructura destacada
 
-- Django
-- Bootstrap
+/Admin
+├── templates/admin/
+│ ├── movimientos.html
+│ ├── entradas.html
+│ └── ...
+├── views/
+│ └── almacen.py
+├── context_processors.py 👈 Genera menú dinámico
+└── urls.py
+
+---
+
+## 📦 Requisitos
+
+- Python 3.10+
+- Django 4.x o superior
+- Bootstrap 5 (CDN o local)
 - SweetAlert2
-- CSRF activo en producción
+- FontAwesome
 
 ---
 
-## 👨‍💻 Autor
+## 🙋‍♂️ Autor
 
 **Inkabytes**  
-📍 [github.com/inkabytes](https://github.com/inkabytes)  
+🔗 [github.com/inkabytes](https://github.com/inkabytes)  
 🎓 Estudiante de Diseño y Desarrollo de Software – Tecsup  
-💡 Enfocado en construir sistemas reales que solucionen problemas reales.
+
 
 ---
 
