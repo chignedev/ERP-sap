@@ -2,9 +2,9 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2 class="mb-4">Centros</h2>
+    <h2 class="mb-4">Sedes</h2>
     
-    <button class="btn btn-primary mb-3" onclick="formCentro()">+ Nuevo Centro</button>
+    <button class="btn btn-primary mb-3" onclick="formCentro()">+ Nueva Sede</button>
 
     <table class="table table-bordered">
         <thead class="table-dark">
@@ -32,7 +32,7 @@
 <script>
 function formCentro(id = null, codigo = '', nombre = '') {
     Swal.fire({
-        title: id ? 'Editar Centro' : 'Nuevo Centro',
+        title: id ? 'Editar Sede' : 'Nuevo Sede',
         html:
             `<input id="codigo" class="swal2-input" placeholder="Código" value="${codigo}">
              <input id="nombre" class="swal2-input" placeholder="Nombre" value="${nombre}">`,
@@ -61,7 +61,7 @@ function formCentro(id = null, codigo = '', nombre = '') {
 
 function eliminarCentro(id) {
     Swal.fire({
-        title: '¿Eliminar centro?',
+        title: '¿Eliminar Sede?',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Sí, eliminar',

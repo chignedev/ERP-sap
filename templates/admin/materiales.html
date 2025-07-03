@@ -15,7 +15,7 @@
                     <p class="card-text"><strong>Código:</strong> {{ material.codigo }}</p>
                     <p class="card-text"><strong>Unidad Base:</strong> {{ material.unidad_base }}</p>
                     <p class="card-text"><strong>Precio:</strong> S/. {{ material.precio }}</p>
-                    <p class="card-text"><strong>Centro:</strong> {{ material.centro.nombre }}</p>
+                    <p class="card-text"><strong>Sede:</strong> {{ material.centro.nombre }}</p>
                     <div class="d-flex justify-content-end">
                         <button class="btn btn-sm btn-warning me-2"
                             onclick="formMaterial({{ material.id }}, '{{ material.codigo }}', '{{ material.nombre|escapejs }}', '{{ material.unidad_base }}', '{{ material.precio }}', {{ material.centro.id }})">
@@ -41,9 +41,9 @@
 function formMaterial(id = null, codigo = '', nombre = '', unidad_base = 'KG', precio = '', centro_id = '') {
     let opcionesCentros = `
         <div style="text-align:left; margin-top:10px;">
-            <label for="centro_id" style="font-weight:bold; display:block; margin-bottom:5px;">Seleccione Centro:</label>
+            <label for="centro_id" style="font-weight:bold; display:block; margin-bottom:5px;">Seleccione Sede:</label>
             <select id="centro_id" class="swal2-input" style="width:100%; display:block;">
-                <option value="">-- Seleccione un centro --</option>
+                <option value="">-- Seleccione una sede --</option>
                 {% for sede in sedes %}
                     <option value="{{ sede.id }}">{{ sede.nombre }}</option>
                 {% endfor %}

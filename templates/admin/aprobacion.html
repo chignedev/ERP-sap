@@ -10,7 +10,7 @@
       <div class="card shadow-sm h-100">
         <div class="card-body">
           <h5 class="card-title">SOLPED #{{ solped.id }}</h5>
-          <p><strong>Centro:</strong> {{ solped.centro.nombre }}</p>
+          <p><strong>Sede:</strong> {{ solped.centro.nombre }}</p>
           <p><strong>Solicitante:</strong> {{ solped.solicitante.get_full_name }}</p>
           {% if solped.plan_produccion %}
           <p><strong>Plan Producción:</strong> #{{ solped.plan_produccion.id }} — {{ solped.plan_produccion.fert.nombre }}</p>
