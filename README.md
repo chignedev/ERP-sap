@@ -77,9 +77,9 @@ Cada entrada del menú se genera con iconos (FontAwesome) y `reverse()` de Djang
 
 ## 📦 Requisitos
 
-- Python 3.10+
-- Django 4.x o superior
-- Bootstrap 5 (CDN o local)
+- Python
+- Django
+- Bootstrap
 - SweetAlert2
 - FontAwesome
 
