@@ -73,7 +73,7 @@ Cada entrada del menú se genera con iconos (FontAwesome) y `reverse()` de Djang
 ├── context_processors.py        # 👈 Genera menú lateral dinámico
 └── urls.py                      # Rutas internas del módulo Admin
 
----
+```
 
 ## 📦 Requisitos
 
